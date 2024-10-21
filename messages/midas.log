@@ -1,0 +1,8 @@
+14:58:04.934 2024/10/21 [Logger,LOG] File '/home/mgandhi/develop/frontend_redpitaya/run00001.mid' CRC32C checksum: 0x0faa7e9f, 51081463 bytes
+14:58:04.934 2024/10/21 [Logger,LOG] File '/home/mgandhi/develop/frontend_redpitaya/run00001.mid.lz4' CRC32C checksum: 0x1a656e3e, 390222 bytes
+14:58:04.943 2024/10/21 [mhttpd,INFO] Run #1 stopped
+14:58:37.195 2024/10/21 [Logger,LOG] Program Logger on host localhost stopped
+14:58:41.059 2024/10/21 [ODBEdit,LOG] Program ODBEdit on host localhost stopped
+14:58:51.614 2024/10/21 [RP Streaming Frontend,LOG] Program RP Streaming Frontend on host localhost stopped
+15:00:15.996 2024/10/21 [mhttpd,LOG] Program mhttpd on host localhost stopped
+15:00:16.003 2024/10/21 [ODBEdit,INFO] Execute command from command line: "shutdown all"
