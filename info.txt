@@ -1,3 +1,17 @@
-Incase your ODB gets corrupted, in your terminal, run:
+1. Incase your ODB gets corrupted, in your terminal, run:
 	
-	odbinit --cleanup -s 100000000 (max size is 100MB)
+-->	odbinit --cleanup -s 100000000 (max size is 100MB)
+
+2. To stop all front-ends and programs connected to MIDAS:
+
+--> odbedit -c "shutdown all"
+
+3. Save current ODB content
+
+--> odbedit -c "save dump.json"
+
+4. Load the saved ODB content
+
+--> odbedit -c "load dump.json"
+
+
