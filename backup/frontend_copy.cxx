@@ -86,7 +86,7 @@ EQUIPMENT equipment[] = {
 // Structure to hold Red Pitaya data in the bank
 typedef struct
 {
-	float variable_name[2048]; //Example data size, ajust as necessary
+	int16_t variable_name[1024]; //Example data size, ajust as necessary
 } RPDA_BANK; 
 
 /****************************************************************************\
@@ -210,9 +210,9 @@ void* data_acquisition_thread(void* param)
 		int bytes_read = recv(stream_sockfd,temp_buffer, sizeof(temp_buffer), 0);
 	//	printf("Bytes read from device %d\n", bytes_read);
 		
-		if (bytes_read % sizeof(float) != 0)
+		if (bytes_read % sizeof(int16_t) != 0)
 		{
-			printf("Error: bytes read is not a multiple of a float size\n");
+			printf("Error: bytes read is not a multiple of an int  size\n");
 			pthread_mutex_unlock(&lock);
 			continue;
 		}
@@ -455,6 +455,10 @@ INT read_periodic_event(char *pevent, INT off)
 		bk_create(pevent, "RPDA", TID_INT16, (void **)&pdata);
 		memcpy(pdata->variable_name, buffer, bytes_read);
 		bk_close(pevent, pdata + bytes_read / sizeof(int16_t));
+
+		// Update ODB with value read
+		int16_t value = buffer[0];
+		db_set_value(hDB, 0, "/Equipment/Periodic/Variables/RPDA", buffer, sizeof(buffer),4096, TID_INT16);
 
 	//	printf("Event size: %d bytes\n", bk_size(pevent));
 	}
