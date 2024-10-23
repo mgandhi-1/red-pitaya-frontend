@@ -1,20 +1,33 @@
-# Compiler and flags
+# Compiler
 CXX = g++
-CXXFLAGS = -lz -lpthread
 
-# Directories
-LIBS = /usr/local/lib/libmfe.a /usr/local/lib/libmidas.a
+# Included directories
+INCLUDES = -I$(MIDASSYS)/include
+
+# Linked directories
+LIBS = -L$(MIDASSYS)/lib -lmidas -lz -lutil -lpthread -lmfe
+
+# Compilation flags
+CXXFLAGS = -O2 $(INCLUDES)
+LDFLAGS = $(LIBS)
 
 # Target executable
 TARGET = frontend
 
 # Source files
-SRC = frontend.cxx
+SRCS = frontend.cxx
 
-# Build target
-$(TARGET): $(SRC)
-	$(CXX) -o $(TARGET) $(SRC) $(LIBS) $(CXXFLAGS)
+# Objects
+OBJS = $(SRCS:.cxx=.o)
 
-# Clean up generated files
+# Build rules
+all: $(TARGET)
+
+$(TARGET): $(OBJS)
+	$(CXX) -o $@ $(OBJS) $(LDFLAGS)
+
+%.o: %.cxx
+	$(CXX) -c $< -o $@  $(CXXFLAGS)
+
 clean:
-	rm -f $(TARGET)
+	rm -f $(OBJS) $(TARGET)
