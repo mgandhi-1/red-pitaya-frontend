@@ -457,8 +457,8 @@ INT read_periodic_event(char *pevent, INT off)
 		bk_close(pevent, pdata + bytes_read / sizeof(int16_t));
 
 		// Update ODB with value read
-		int16_t value = buffer[0];
-		db_set_value(hDB, 0, "/Equipment/Periodic/Variables/RPDA", buffer, sizeof(buffer),4096, TID_INT16);
+	//	int16_t value = buffer[0];
+		db_set_value(hDB, 0, "/Equipment/Periodic/Variables/RPDA", buffer, sizeof(buffer),8192, TID_INT16);
 
 	//	printf("Event size: %d bytes\n", bk_size(pevent));
 	}
