@@ -187,7 +187,7 @@ void* data_acquisition_thread(void* param)
 
 		if (!readout_enabled())
 		{
-			ss_sleep(5); // do not produce events when run is stopped
+			usleep(10); // do not produce events when run is stopped
 			continue;
 		}
 		// Acquire a write pointer in the ring buffer
@@ -272,6 +272,8 @@ void* data_analysis_thread(void* param)
 			pthread_mutex_lock(&lock);
 
 			status = rb_get_rp(rbh, (void **) &pevent, 0);
+			printf("Ring buffer status: %d\n", status);
+
 			if (status == DB_TIMEOUT)
 			{
 				pthread_mutex_unlock(&lock);
@@ -286,26 +288,42 @@ void* data_analysis_thread(void* param)
 			continue;
 		}
 
-	// Analyze data here
-	// Example analysis:
+		if (pevent == nullptr) 
+        {
+            printf("Error: pevent is null\n");
+            pthread_mutex_unlock(&lock);
+            continue;
+        }
+        
+        if (pevent->data_size <= 0)
+        {
+            printf("Error: data_size is not valid: %d\n", pevent->data_size);
+            pthread_mutex_unlock(&lock);
+            continue;
+        }
+
+		// Analyze data here
+		// Example analysis:
 		int num_samples = pevent->data_size;// number of samples in the event
 		printf("Number of samples available: %d\n", num_samples);
 
 		int16_t *data = (int16_t *)(pevent + 1); // pointer to the data 
 
-		for (int i = 0; i < num_samples; i++)
+		for (int i = 1; i < num_samples; i++)
 		{
-			if (data[i] > 100)
+			if (data[i - 1] > 1000)
 			{
-				printf("Data %d exceeds threshold: %d\n", i, data[i]); 
+				int derivative = data[i] - data[i - 1];
+				printf("Derivative at sample %d: %d\n", i, derivative); 
+
+
+				if (data[i] < -1000)
+				{
+					// Data does not meet criteria, so ignore it 
+					break;
+				}
 			}
 
-			else 
-			{
-			// Data does not meet criteria, so ignore it 
-				printf("Data %d is below threshold: %d, ignore\n", i , data[i]);
-			}
-			
 		} 
 
 		// Mark the event as processed
@@ -366,7 +384,7 @@ INT frontend_loop()
 //	return frontend_init(); // Reinitialize the connection
 //	}
 	
-	ss_sleep(5); // Prevent CPU overload, adjust as needed
+	usleep(5); // Prevent CPU overload, adjust as needed
 	return SUCCESS;
 }
 
@@ -474,7 +492,7 @@ INT read_periodic_event(char *pevent, INT off)
 
 INT poll_trigger_event(INT source, INT count, BOOL test)
 {
-	ss_sleep(10);
+	usleep(10);
 	printf("Entering trigger event!\n");
 	for (int i = 0; i < count; i++)
 	{
