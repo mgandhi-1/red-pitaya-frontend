@@ -39,10 +39,10 @@ BOOL frontend_call_loop = TRUE;
 
 INT display_period = 0; // update this later
 
-INT max_event_size = 10000000; // update later
+INT max_event_size = 10000; // update later
 INT max_event_size_frag = 0;
 
-INT event_buffer_size = 20*10000000; //update later
+INT event_buffer_size = 150*10000; //update later
 
 // Forward Declarations
 INT frontend_init();
@@ -180,12 +180,14 @@ void* data_acquisition_thread(void* param)
 	timeout.tv_usec = 0; // 0 microseconds
 	setsockopt(stream_sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
 
+
+
 	while (is_readout_thread_enabled())
 	{
 
 		if (!readout_enabled())
 		{
-			ss_sleep(1); // do not produce events when run is stopped
+			ss_sleep(5); // do not produce events when run is stopped
 			continue;
 		}
 		// Acquire a write pointer in the ring buffer
@@ -194,7 +196,7 @@ void* data_acquisition_thread(void* param)
 			status = rb_get_wp(rbh, (void **) &pevent, 0);
 			if (status == DB_TIMEOUT)
 			{
-				ss_sleep(1);
+				usleep(5);
 				if (!is_readout_thread_enabled()) break;
 			}
 		} while (status != DB_SUCCESS);
@@ -206,16 +208,8 @@ void* data_acquisition_thread(void* param)
 
 		// Buffer for incoming data
 		int16_t temp_buffer[4096] = {0};
-		// Read data from the Red Pitaya through TCP socket
-		int bytes_read = recv(stream_sockfd,temp_buffer, sizeof(temp_buffer), 0);
-	//	printf("Bytes read from device %d\n", bytes_read);
-		
-		if (bytes_read % sizeof(int16_t) != 0)
-		{
-			printf("Error: bytes read is not a multiple of an int  size\n");
-			pthread_mutex_unlock(&lock);
-			continue;
-		}
+
+		int bytes_read = recv(stream_sockfd, temp_buffer, sizeof(temp_buffer), 0);
 
 		if (bytes_read <= 0)
 		{
@@ -246,7 +240,7 @@ void* data_acquisition_thread(void* param)
 		pevent->trigger_mask = 0;
 		pevent->data_size = bytes_read / sizeof(int16_t);
 
-		memcpy((int16_t *)(pevent + 1), temp_buffer, bytes_read);
+		memcpy((int16_t *)(pevent + 1), temp_buffer, sizeof(temp_buffer));
 
 		// Unlock mutex after writing to the buffer
 		pthread_mutex_unlock(&lock);
@@ -301,7 +295,7 @@ void* data_analysis_thread(void* param)
 
 		for (int i = 0; i < num_samples; i++)
 		{
-			if (data[i] > 10000.0f)
+			if (data[i] > 100)
 			{
 				printf("Data %d exceeds threshold: %d\n", i, data[i]); 
 			}
@@ -372,7 +366,7 @@ INT frontend_loop()
 //	return frontend_init(); // Reinitialize the connection
 //	}
 	
-	ss_sleep(6); // Prevent CPU overload, adjust as needed
+	ss_sleep(5); // Prevent CPU overload, adjust as needed
 	return SUCCESS;
 }
 
@@ -444,23 +438,23 @@ INT read_periodic_event(char *pevent, INT off)
 	if (bytes_read > 0)
 	{	
 	//	printf("Bytes read: %d\n", bytes_read);
-		
-		if (bytes_read > max_event_size)
+		if (bytes_read % sizeof(int16_t) != 0)
 		{
-			printf("Limiting data to max event size\n");
-			bytes_read = max_event_size;
+			printf("Error: bytes_read is not a multiple of int16_t size\n");
+			return FE_ERR_HW;
 		}
+		
 
 		// Create MIBAS bank called PRDA and store the streamed data
 		bk_create(pevent, "RPDA", TID_INT16, (void **)&pdata);
-		memcpy(pdata->variable_name, buffer, bytes_read);
-		bk_close(pevent, pdata + bytes_read / sizeof(int16_t));
+		memcpy(pdata->variable_name, buffer, sizeof(buffer));
 
-		// Update ODB with value read
-	//	int16_t value = buffer[0];
-		db_set_value(hDB, 0, "/Equipment/Periodic/Variables/RPDA", buffer, sizeof(buffer),8192, TID_INT16);
+		int num_values = sizeof(buffer) / sizeof(buffer[0]);
+		//db_set_value(hDB, 0, "/Equipment/Periodic/Variables/RPDA", buffer, sizeof(buffer),num_values, TID_INT16);
 
-	//	printf("Event size: %d bytes\n", bk_size(pevent));
+		bk_close(pevent, pdata + num_values);
+
+		//printf("Event size: %d bytes\n", bk_size(pevent));
 	}
 
 	else if (bytes_read == 0)
