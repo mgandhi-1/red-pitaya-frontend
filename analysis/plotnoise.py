@@ -10,14 +10,14 @@ def load_json_data(file_path):
 # Extract first 4000 entries from the "RPDA" array in the JSON
 def extract_first_4000_entries(data):
     if "RPDA" in data:
-        return data["RPDA"][:4000]  # Extract first 4000 entries from the array
+        return data["RPDA"][5000:14000]  # Extract first 4000 entries from the array
     else:
         raise KeyError("Key 'RPDA' not found in the JSON file.")
 
 # Plot the data
 def plot_data(data):
     plt.plot(data)
-    plt.title("First 4000 Entries from RPDA Array")
+    plt.title("First 14000 Entries from RPDA Array")
     plt.xlabel("Index")
     plt.ylabel("Value")
     plt.grid(True)
