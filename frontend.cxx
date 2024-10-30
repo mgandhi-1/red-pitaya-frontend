@@ -444,7 +444,7 @@ INT read_periodic_event(char *pevent, INT off)
 //	printf("Starting periodic event\n");
 	// Buffer for incoming data
 	int16_t buffer[4096]= {0};
-
+	printf("Buffer size: %lu bytes\n", sizeof(buffer));
 	// Setting a timeout for the recv function
 	struct timeval timeout;
 	timeout.tv_sec = 10;
@@ -468,6 +468,7 @@ INT read_periodic_event(char *pevent, INT off)
 		memcpy(pdata->variable_name, buffer, sizeof(buffer));
 
 		int num_values = sizeof(buffer) / sizeof(buffer[0]);
+		printf("Number of values: %d\n", num_values);
 		//db_set_value(hDB, 0, "/Equipment/Periodic/Variables/RPDA", buffer, sizeof(buffer),num_values, TID_INT16);
 
 		bk_close(pevent, pdata + num_values);
