@@ -141,10 +141,6 @@ INT frontend_init()
 	pthread_create(&acquisition_thread, NULL, data_acquisition_thread, NULL);
 	pthread_create(&analysis_thread, NULL, data_analysis_thread, NULL);
 
-	// Join the threads
-	//pthread_join(acquisition_thread, NULL);
-	//pthread_join(analysis_thread, NULL);
-
 	return SUCCESS;
 }
 
@@ -311,7 +307,7 @@ void* data_analysis_thread(void* param)
 
 		for (int i = 1; i < num_samples; i++)
 		{
-			if (data[i - 1] > 1000)
+			if (data[i - 1] > 100000)
 			{
 				int derivative = data[i] - data[i - 1];
 				printf("Derivative at sample %d: %d\n", i, derivative); 
