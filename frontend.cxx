@@ -465,7 +465,6 @@ INT read_periodic_event(char *pevent, INT off)
 
 		int num_values = sizeof(buffer) / sizeof(buffer[0]);
 		printf("Number of values: %d\n", num_values);
-		//db_set_value(hDB, 0, "/Equipment/Periodic/Variables/RPDA", buffer, sizeof(buffer),num_values, TID_INT16);
 
 		bk_close(pevent, pdata + num_values);
 
