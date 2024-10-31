@@ -4,7 +4,8 @@
 #include "TRootanaDisplay.hxx"
 #include "TH1D.h"
 
-//#include "TRootanaEventLoop.hxx"
+#include "TRootanaEventLoop.hxx"
+#include "THttpServer.h"
 //#include "TDataContainer.hxx"
 //#include "TCanvas.h"
 //#include "TH1F.h"
