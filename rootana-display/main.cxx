@@ -27,7 +27,7 @@ public:
 		AddSingleCanvas("RPDA");
 		
 		// Choose how many events to skip before updating
-		SetNumberSkipEvent(5);
+		SetNumberSkipEvent(500);
 
 		// Choose Display name
 		SetDisplayName("Red Pitaya Data Stream");
