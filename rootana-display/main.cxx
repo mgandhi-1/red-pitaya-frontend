@@ -1,15 +1,10 @@
 #include <stdio.h>
 #include <iostream>
-
 #include "TRootanaDisplay.hxx"
 #include "TH1D.h"
-
 #include "TRootanaEventLoop.hxx"
 #include "THttpServer.h"
-//#include "TDataContainer.hxx"
-//#include "TCanvas.h"
-//#include "TH1F.h"
-//#include "TMidasEvent.h"  // Corrected header file extension
+
 
 class MyRealTimePlot : public TRootanaDisplay {
 
@@ -60,6 +55,11 @@ public:
 			c1->Update();
 		}
 	}
+
+
+	void Reset();
+
+	void QuitButtonAction();
 };
 
 int main(int argc, char *argv[]) {
