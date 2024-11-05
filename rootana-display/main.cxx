@@ -13,7 +13,7 @@ class MyRealTimePlot : public TRootanaDisplay {
 public:
     MyRealTimePlot() {
 	//	DisableRootOutput(true); // Disable default ROOT output files
-        hist = new TH1F("hist", "Data from Red Pitaya;Sample;Amplitude", 4096, 0, 4096);
+        hist = new TH1F("hist", "Data from Red Pitaya;Sample;Amplitude", 6000, -80, 80);
     }
 
 	void AddAllCanvases()
@@ -22,7 +22,7 @@ public:
 		AddSingleCanvas("RPDA");
 		
 		// Choose how many events to skip before updating
-		SetNumberSkipEvent(500);
+		SetNumberSkipEvent(100);
 
 		// Choose Display name
 		SetDisplayName("Red Pitaya Data Stream");
@@ -57,9 +57,9 @@ public:
 	}
 
 
-	void Reset();
+//	void Reset();
 
-	void QuitButtonAction();
+//	void QuitButtonAction();
 };
 
 int main(int argc, char *argv[]) {
