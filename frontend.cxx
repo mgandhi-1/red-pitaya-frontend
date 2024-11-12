@@ -55,7 +55,7 @@ INT end_of_run(INT run_number, char *error);
 INT pause_run(INT run_number, char *error);
 INT resume_run(INT run_number, char *error);
 INT frontend_loop();
-INT trigger_thread(void *param);
+//INT trigger_thread(void *param);
 
 BOOL equipment_common_overwrite = false;
 
@@ -412,7 +412,7 @@ INT read_trigger_event(char *pevent, INT off)
 	if (bytes_read > 0)
 	{
 		// Create MIDAS bank called RPDA  and store the streamed data
-		bk_create(pevent, "RPDA", TID_INT16, (void **) &pdata);
+		bk_create(pevent, "RPDA", TID_SHORT, (void **) &pdata);
 		memcpy(pdata->variable_name, buffer, sizeof(buffer)); // Change variable_name
 		bk_close(pevent, pdata + bytes_read / sizeof(int16_t));
 
@@ -435,7 +435,7 @@ INT read_trigger_event(char *pevent, INT off)
 INT read_periodic_event(char *pevent, INT off)
 {
 	RPDA_BANK *pdata;
-	bk_init32(pevent);
+	bk_init32a(pevent);
 
 //	printf("Starting periodic event\n");
 	// Buffer for incoming data
@@ -460,7 +460,7 @@ INT read_periodic_event(char *pevent, INT off)
 		
 
 		// Create MIBAS bank called PRDA and store the streamed data
-		bk_create(pevent, "RPDA", TID_INT16, (void **)&pdata);
+		bk_create(pevent, "RPDA", TID_SHORT, (void **)&pdata);
 		memcpy(pdata->variable_name, buffer, sizeof(buffer));
 
 		int num_values = sizeof(buffer) / sizeof(buffer[0]);
