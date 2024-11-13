@@ -21,7 +21,7 @@
 
 // Red Pitaya TCP streaming configuration
 #ifndef REDPITAYA_IP
-#define REDPITAYA_IP "169.254.182.13" // Enter "IP ADDRESS HERE"
+#define REDPITAYA_IP "169.254.182.13" // Enter "IP ADDRESS" HERE
 #endif 
 
 #define REDPITAYA_PORT 8900 //Enter port number here
@@ -49,12 +49,13 @@ INT frontend_init();
 INT frontend_exit();
 INT read_trigger_event(char *pevent, INT off);
 INT read_periodic_event(char *pevent, INT off);
-INT poll_trigger_event(INT source, INT count, BOOL test);
+INT poll_event(INT source, INT count, BOOL test);
 INT begin_of_run(INT run_number,  char *error);
 INT end_of_run(INT run_number, char *error);
 INT pause_run(INT run_number, char *error);
 INT resume_run(INT run_number, char *error);
 INT frontend_loop();
+int rbh; // Ring buffer 
 //INT trigger_thread(void *param);
 
 BOOL equipment_common_overwrite = false;
@@ -68,13 +69,12 @@ INT gbl_run_number;
 EQUIPMENT equipment[] = {
 	{"Trigger", 
 		{1, 0, "SYSTEM", EQ_POLLED, 0, "MIDAS", TRUE,
-			RO_RUNNING|RO_ODB, 100, 0, 0, 0, "", "", "", "", "", 0, 0},
+			RO_RUNNING|RO_ODB, 100, 0, 0, 0, "", "", "",},
 		read_trigger_event,
 	},
 	{"Periodic", 
 		{2, 0, "SYSTEM", EQ_PERIODIC, 0, "MIDAS", TRUE,
-			RO_RUNNING | RO_TRANSITIONS |RO_ODB, 1, 0, 0, 0, "", "",
-			 "", "", "", 0, 0},
+			RO_RUNNING | RO_TRANSITIONS |RO_ODB, 1, 0, 0, 0, "", "", "",},
 		read_periodic_event,
 	},
 	{""}
@@ -96,7 +96,6 @@ typedef struct
 
 INT frontend_init()
 {
-	//install_poll_event(poll_trigger_event);
 	printf("Initializing frontend and Red Pitaya streaming connection ... \n");
 
 	// Create a socket for TCP streaming
@@ -127,19 +126,36 @@ INT frontend_init()
 	printf("Red Pitaya streaming connected successfully!\n");
 
 	// Open MIDAS buffer for use
-	INT status = bm_open_buffer("SYSTEM", 2048,  &buf_handle);
+	INT status = bm_open_buffer("SYSTEM", 2048, &buf_handle);
 	if (status != BM_SUCCESS)
 	{
 		printf("Error opening MIDAS buffer: %d\n", status);
 		return FE_ERR_HW;
 	}
 	
+	rbh = get_event_rbh(0); // Initialize the ring buffer here 
+
 	pthread_mutex_init(&lock, NULL);
+
+	//install_poll_event(poll_trigger_event); // calls poll_trigger_event
 
 	// Initialize data acquisition and analysis threads
 	pthread_t acquisition_thread, analysis_thread;
 	pthread_create(&acquisition_thread, NULL, data_acquisition_thread, NULL);
 	pthread_create(&analysis_thread, NULL, data_analysis_thread, NULL);
+
+	//if (pthread_create(&acquisition_thread, NULL, data_acquisition_thread, NULL) != 0) 
+	//{
+    //	printf("Failed to create acquisition thread\n");
+    //	return FE_ERR_HW;
+	//}
+
+	//if (pthread_create(&analysis_thread, NULL, data_analysis_thread, NULL) != 0) 
+	//{
+    //	printf("Failed to create analysis thread\n");
+    //	return FE_ERR_HW;
+	//}
+
 
 	return SUCCESS;
 }
@@ -168,7 +184,6 @@ void* data_acquisition_thread(void* param)
 {
 	printf("Data acquisition thread started\n");
 	// Obtain ring buffer for inter-thread data exchange
-	int rbh = get_event_rbh(0);
 	EVENT_HEADER *pevent;
 	//Set a timeout for the recv function to prevent indefinite blocking
 	struct timeval timeout;
@@ -206,6 +221,8 @@ void* data_acquisition_thread(void* param)
 		int16_t temp_buffer[4096] = {0};
 
 		int bytes_read = recv(stream_sockfd, temp_buffer, sizeof(temp_buffer), 0);
+		printf("Data received: %d bytes\n", bytes_read);
+
 
 		if (bytes_read <= 0)
 		{
@@ -232,11 +249,11 @@ void* data_acquisition_thread(void* param)
 		}
 			
 		// Prepare the event header
-		pevent->event_id = 2;
+		pevent->event_id = 2; // currently set for periodic equipment
 		pevent->trigger_mask = 0;
 		pevent->data_size = bytes_read / sizeof(int16_t);
 
-		memcpy((int16_t *)(pevent + 1), temp_buffer, sizeof(temp_buffer));
+		memcpy((int16_t *)(pevent + 1), temp_buffer, bytes_read);
 
 		// Unlock mutex after writing to the buffer
 		pthread_mutex_unlock(&lock);
@@ -257,8 +274,10 @@ void* data_analysis_thread(void* param)
 {
 	printf("Data analysis thread started\n");
 	// Obtain ring buffer for inter-thread data exchange
-	int rbh = get_event_rbh(0);
+	// int rbh = get_event_rbh(0);
+	RPDA_BANK *pdata;
 	EVENT_HEADER *pevent;
+	
 	
 	while(is_readout_thread_enabled())
 	{
@@ -273,7 +292,7 @@ void* data_analysis_thread(void* param)
 			if (status == DB_TIMEOUT)
 			{
 				pthread_mutex_unlock(&lock);
-				ss_sleep(1);
+				usleep(5);
 				if (!is_readout_thread_enabled()) break;
 			}
 		} while (status != DB_SUCCESS);
@@ -313,7 +332,7 @@ void* data_analysis_thread(void* param)
 				printf("Derivative at sample %d: %d\n", i, derivative); 
 
 
-				if (data[i] < -1000)
+				if (data[i] < -100000)
 				{
 					// Data does not meet criteria, so ignore it 
 					break;
@@ -321,6 +340,13 @@ void* data_analysis_thread(void* param)
 			}
 
 		} 
+
+		// Create bank and store the processed values
+		bk_init32a(pevent);
+		bk_create(pevent, "TEST", TID_WORD, (void **)&pdata);
+		memcpy(&pdata->variable_name[0], data, num_samples * sizeof(int16_t));
+		//pdata->variable_name[0] = num_samples;
+		bk_close(pevent, pdata->variable_name + num_samples);
 
 		// Mark the event as processed
 		rb_increment_rp(rbh, sizeof(EVENT_HEADER) + num_samples * sizeof(int16_t));
@@ -374,20 +400,39 @@ INT resume_run(INT run_number, char *error)
 \********************************************************************/
 INT frontend_loop()
 {
-//	if (stream_sockfd < 0)
-//	{	
-//	printf("Stream connection lost, attempting to reconnect...\n");
-//	return frontend_init(); // Reinitialize the connection
-//	}
+	//if (stream_sockfd < 0)
+	//{	
+	//printf("Stream connection lost, attempting to reconnect...\n");
+	//return frontend_init(); // Reinitialize the connection
+	//}
 	
 	usleep(5); // Prevent CPU overload, adjust as needed
 	return SUCCESS;
 }
 
+
+/*******************************************************************\
+	Poll for trigger event: Check if new data is available from Red Pitaya
+\*******************************************************************/
 INT poll_event(INT source, INT count,BOOL test)
 {
-	return 0;
+	//int i;
+	//DWORD flag;
+	//printf("Entering trigger event!\n");
+	//for (i = 0; i < count; i++)
+	//{
+		//printf("Inside the triggered event\n");
+		//flag = TRUE;
+		//cm_yield(100);
+		// Poll the stream for data availability
+		//if (flag)
+	//	if (!test) 
+	//		return TRUE; // New event detected
+	//}
+
+	return SUCCESS;
 }
+
 /*********************************************************************\
 		Read data from the Red Pitaya TCP stream in a trigger event
 \*********************************************************************/
@@ -395,110 +440,91 @@ INT poll_event(INT source, INT count,BOOL test)
 INT read_trigger_event(char *pevent, INT off)
 {
 	RPDA_BANK *pdata;
-	bk_init32(pevent);
+	
+	pthread_mutex_lock(&lock);
+	EVENT_HEADER *pevent_header;
+	int status = rb_get_rp(rbh, (void **) &pevent, 0);
 
-	// Buffer for incoming data
-	int16_t buffer[4096] = {0};
-
-	// Setting a timeout for the recv function
-    struct timeval timeout;
-    timeout.tv_sec = 10;
-	timeout.tv_usec = 0;
-	setsockopt(stream_sockfd, SOL_SOCKET, SO_RCVTIMEO,(char *)&timeout, sizeof(timeout));
-
-
-	// Read from the Red Pitaya TCP stream
-	int bytes_read = recv(stream_sockfd, buffer, sizeof(buffer), 0);
-	if (bytes_read > 0)
+	if (status == DB_SUCCESS)
 	{
-		// Create MIDAS bank called RPDA  and store the streamed data
-		bk_create(pevent, "RPDA", TID_SHORT, (void **) &pdata);
-		memcpy(pdata->variable_name, buffer, sizeof(buffer)); // Change variable_name
-		bk_close(pevent, pdata + bytes_read / sizeof(int16_t));
+		// Number of samples in the event
+		int num_samples = pevent_header->data_size;
 
-		// Limit event rate to 100 Hz (test most suitable range for your equipment)
-	//	ss_sleep(5);
+		bk_init32a(pevent);
+		// Create MIDAS bank called TPDA  and store the streamed data
+		bk_create(pevent, "TPDA", TID_WORD, (void **) &pdata);
+		memcpy(pdata->variable_name, (int16_t *)(pevent_header + 1), num_samples * sizeof(int16_t)); // Change variable_name
+
+		//int num_values = sizeof(buffer) / sizeof(buffer[0]);
+		bk_close(pevent, pdata->variable_name+num_samples);
+
+		// Incrememnt read pointer
+		rb_increment_rp(rbh, sizeof(EVENT_HEADER) + num_samples * sizeof(int16_t));
+		pthread_mutex_unlock(&lock);
+		return SUCCESS;
 	}
 
-	if (bytes_read <= 0)
+	else if (status == DB_TIMEOUT)
 	{
-		printf("Error: Failed to read from the Red Pitaya stream\n");
-		close(stream_sockfd);
-		frontend_init();
+		printf("No new data available in the ring buffer\n");
+		pthread_mutex_unlock(&lock);
+		return FE_ERR_HW;
 	}
 
-	else {printf("Failed to read from Red Pitaya stream\n");}
-
+	else
+	{
+		printf("Error accessing the ring buffer\n");
+		pthread_mutex_unlock(&lock);
+		return FE_ERR_HW;
+	}
+		
 	return SUCCESS; //bk_size(pevent);
 }
 
 INT read_periodic_event(char *pevent, INT off)
 {
 	RPDA_BANK *pdata;
-	bk_init32a(pevent);
-
-//	printf("Starting periodic event\n");
-	// Buffer for incoming data
-	int16_t buffer[4096]= {0};
-	printf("Buffer size: %lu bytes\n", sizeof(buffer));
-	// Setting a timeout for the recv function
-	struct timeval timeout;
-	timeout.tv_sec = 10;
-	timeout.tv_usec = 0;
-	setsockopt(stream_sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
-
-	// Read from the Red Pitaya TCP stream
-	int bytes_read = recv(stream_sockfd, buffer, sizeof(buffer), 0);
-	if (bytes_read > 0)
-	{	
-	//	printf("Bytes read: %d\n", bytes_read);
-		if (bytes_read % sizeof(int16_t) != 0)
-		{
-			printf("Error: bytes_read is not a multiple of int16_t size\n");
-			return FE_ERR_HW;
-		}
-		
-
-		// Create MIBAS bank called PRDA and store the streamed data
-		bk_create(pevent, "RPDA", TID_SHORT, (void **)&pdata);
-		memcpy(pdata->variable_name, buffer, sizeof(buffer));
-
-		int num_values = sizeof(buffer) / sizeof(buffer[0]);
-		printf("Number of values: %d\n", num_values);
-
-		bk_close(pevent, pdata + num_values);
-
-		//printf("Event size: %d bytes\n", bk_size(pevent));
-	}
-
-	else if (bytes_read == 0)
-	{
-		printf("Error: Failed to read from Red Pitaya stream\n");
-		close(stream_sockfd); 
-		frontend_init();
-	} 
 	
-	return SUCCESS;   //bk_size(pevent);
-}
-
-
-/*******************************************************************\
-	Poll for trigger event: Check if new data is available from Red Pitaya
-\*******************************************************************/
-
-INT poll_trigger_event(INT source, INT count, BOOL test)
-{
-	usleep(10);
-	printf("Entering trigger event!\n");
-	for (int i = 0; i < count; i++)
+	pthread_mutex_lock(&lock);
+	EVENT_HEADER *pevent_header;
+	int status = rb_get_rp(rbh, (void **)&pevent_header, 0);
+//	printf("Starting periodic event\n");
+	if (status == DB_SUCCESS)
 	{
-		printf("%d\n", i);
-		printf("Inside the triggered event\n");
-		// Poll the stream for data availability
-		if (!test) return true; // New event detected
+		// Number of samples in the event
+		int num_samples = pevent_header->data_size;
+
+		bk_init32a(pevent);
+		// Create MIDAS bank called TPDA  and store the streamed data
+		bk_create(pevent, "RPDA", TID_WORD, (void **) &pdata);
+		memcpy(pdata->variable_name, (int16_t *)(pevent_header + 1), num_samples * sizeof(int16_t)); // Change variable_name
+
+		//int num_values = sizeof(buffer) / sizeof(buffer[0]);
+		bk_close(pevent, pdata->variable_name+num_samples);
+
+		// Incrememnt read pointer
+		rb_increment_rp(rbh, sizeof(EVENT_HEADER) + num_samples * sizeof(int16_t));
+		pthread_mutex_unlock(&lock);
+		return SUCCESS;
 	}
-	return 0; //No event detected
+
+	else if (status == DB_TIMEOUT)
+	{
+		printf("No new data available in the ring buffer\n");
+		pthread_mutex_unlock(&lock);
+		return FE_ERR_HW;
+	}
+
+	else
+	{
+		printf("Error accessing the ring buffer\n");
+		pthread_mutex_unlock(&lock);
+		return FE_ERR_HW;
+	}
+		
+	return SUCCESS; //bk_size(pevent);
 }
+
 
 INT interrupt_configure(INT cmd, INT source, PTYPE adr)
 {
