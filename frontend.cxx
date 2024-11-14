@@ -39,10 +39,10 @@ BOOL frontend_call_loop = TRUE;
 
 INT display_period = 0; // update this later
 
-INT max_event_size = 10000; // update later
+INT max_event_size = 5000; // update later
 INT max_event_size_frag = 0;
 
-INT event_buffer_size = 150*10000; //update later
+INT event_buffer_size = 10*5000; //update later
 
 // Forward Declarations
 INT frontend_init();
@@ -68,7 +68,7 @@ INT gbl_run_number;
 
 EQUIPMENT equipment[] = {
 	{"Trigger", 
-		{1, 0, "SYSTEM", EQ_POLLED, 0, "MIDAS", TRUE,
+		{1, 0, "SYSTEM", EQ_MULTITHREAD, 0, "MIDAS", TRUE,
 			RO_RUNNING|RO_ODB, 100, 0, 0, 0, "", "", "",},
 		read_trigger_event,
 	},
@@ -84,10 +84,10 @@ EQUIPMENT equipment[] = {
 #endif
 
 // Structure to hold Red Pitaya data in the bank
-typedef struct
-{
-	int16_t variable_name[1024]; //Example data size, ajust as necessary
-} RPDA_BANK; 
+//typedef struct
+//{
+//	int16_t variable_name[1024]; //Example data size, ajust as necessary
+//} RPDA_BANK; 
 
 /****************************************************************************\
 
@@ -185,6 +185,9 @@ void* data_acquisition_thread(void* param)
 	printf("Data acquisition thread started\n");
 	// Obtain ring buffer for inter-thread data exchange
 	EVENT_HEADER *pevent;
+	WORD *pdata;
+	int status;
+
 	//Set a timeout for the recv function to prevent indefinite blocking
 	struct timeval timeout;
 	timeout.tv_sec = 10; //seconds
@@ -218,9 +221,16 @@ void* data_acquisition_thread(void* param)
 		pthread_mutex_lock(&lock);
 
 		// Buffer for incoming data
-		int16_t temp_buffer[4096] = {0};
+		//int16_t temp_buffer[4096] = {0};
 
-		int bytes_read = recv(stream_sockfd, temp_buffer, sizeof(temp_buffer), 0);
+		bm_compose_event_threadsafe(pevent, 1, 0, 0, &equipment[0].serial_number);
+        pdata = (WORD *)(pevent + 1);  // Set pdata to point to the data section of the event
+
+		// Initialize the bank and read data directly into the bank
+        bk_init32(pevent);
+        bk_create(pevent, "RPD0", TID_WORD, (void **)&pdata);
+
+		int bytes_read = recv(stream_sockfd, pdata, max_event_size * sizeof(WORD), 0);
 		printf("Data received: %d bytes\n", bytes_read);
 
 
@@ -247,19 +257,18 @@ void* data_acquisition_thread(void* param)
 			}
 
 		}
-			
-		// Prepare the event header
-		pevent->event_id = 2; // currently set for periodic equipment
-		pevent->trigger_mask = 0;
-		pevent->data_size = bytes_read / sizeof(int16_t);
+		
+		 // Adjust data pointers after reading
+        pdata += bytes_read / sizeof(WORD);
+        bk_close(pevent, pdata);
 
-		memcpy((int16_t *)(pevent + 1), temp_buffer, bytes_read);
+        pevent->data_size = bk_size(pevent);
 
 		// Unlock mutex after writing to the buffer
 		pthread_mutex_unlock(&lock);
 
 		// Send event to ring buffer
-		rb_increment_wp(rbh, sizeof(EVENT_HEADER) + pevent->data_size * sizeof(int16_t));
+		rb_increment_wp(rbh, sizeof(EVENT_HEADER) + pevent->data_size);
 	}
 	pthread_mutex_unlock(&lock);
 
@@ -275,9 +284,8 @@ void* data_analysis_thread(void* param)
 	printf("Data analysis thread started\n");
 	// Obtain ring buffer for inter-thread data exchange
 	// int rbh = get_event_rbh(0);
-	RPDA_BANK *pdata;
 	EVENT_HEADER *pevent;
-	
+	WORD *pdata;
 	
 	while(is_readout_thread_enabled())
 	{
@@ -319,37 +327,44 @@ void* data_analysis_thread(void* param)
 
 		// Analyze data here
 		// Example analysis:
-		int num_samples = pevent->data_size;// number of samples in the event
-		printf("Number of samples available: %d\n", num_samples);
+		//int num_samples = pevent->data_size;// number of samples in the event
+		//printf("Number of samples available: %d\n", num_samples);
 
-		int16_t *data = (int16_t *)(pevent + 1); // pointer to the data 
+		//int16_t *data = (int16_t *)(pevent + 1); // pointer to the data 
 
-		for (int i = 1; i < num_samples; i++)
-		{
-			if (data[i - 1] > 100000)
-			{
-				int derivative = data[i] - data[i - 1];
-				printf("Derivative at sample %d: %d\n", i, derivative); 
-
-
-				if (data[i] < -100000)
-				{
+		//for (int i = 1; i < num_samples; i++)
+		//{
+		//	if (data[i - 1] > 100000)
+		//	{
+		//		int derivative = data[i] - data[i - 1];
+		//		printf("Derivative at sample %d: %d\n", i, derivative); 
+	//			if (data[i] < -100000)
+	//			{
 					// Data does not meet criteria, so ignore it 
-					break;
-				}
-			}
+	//				break;
+	//			}
+	//		}
 
-		} 
+		//} 
 
+		pdata = (WORD *)(pevent + 1);
+
+        // Perform data analysis here (e.g., calculating derivatives)
+        int num_samples = pevent->data_size / sizeof(WORD);
+        for (int i = 1; i < num_samples; i++)
+        {
+            int derivative = pdata[i] - pdata[i - 1];
+            printf("Derivative at sample %d: %d\n", i, derivative);
+        }
 		// Create bank and store the processed values
-		bk_init32a(pevent);
-		bk_create(pevent, "TEST", TID_WORD, (void **)&pdata);
-		memcpy(&pdata->variable_name[0], data, num_samples * sizeof(int16_t));
+	//	bk_init32a(pevent);
+	//	bk_create(pevent, "TEST", TID_WORD, (void **)&pdata);
+	//	memcpy(&pdata->variable_name[0], data, num_samples * sizeof(int16_t));
 		//pdata->variable_name[0] = num_samples;
-		bk_close(pevent, pdata->variable_name + num_samples);
+	//	bk_close(pevent, pdata->variable_name + num_samples);
 
 		// Mark the event as processed
-		rb_increment_rp(rbh, sizeof(EVENT_HEADER) + num_samples * sizeof(int16_t));
+		rb_increment_rp(rbh, sizeof(EVENT_HEADER) + pevent->data_size);
 	
 		pthread_mutex_unlock(&lock);	
 
@@ -433,99 +448,6 @@ INT poll_event(INT source, INT count,BOOL test)
 	return SUCCESS;
 }
 
-/*********************************************************************\
-		Read data from the Red Pitaya TCP stream in a trigger event
-\*********************************************************************/
-
-INT read_trigger_event(char *pevent, INT off)
-{
-	RPDA_BANK *pdata;
-	
-	pthread_mutex_lock(&lock);
-	EVENT_HEADER *pevent_header;
-	int status = rb_get_rp(rbh, (void **) &pevent, 0);
-
-	if (status == DB_SUCCESS)
-	{
-		// Number of samples in the event
-		int num_samples = pevent_header->data_size;
-
-		bk_init32a(pevent);
-		// Create MIDAS bank called TPDA  and store the streamed data
-		bk_create(pevent, "TPDA", TID_WORD, (void **) &pdata);
-		memcpy(pdata->variable_name, (int16_t *)(pevent_header + 1), num_samples * sizeof(int16_t)); // Change variable_name
-
-		//int num_values = sizeof(buffer) / sizeof(buffer[0]);
-		bk_close(pevent, pdata->variable_name+num_samples);
-
-		// Incrememnt read pointer
-		rb_increment_rp(rbh, sizeof(EVENT_HEADER) + num_samples * sizeof(int16_t));
-		pthread_mutex_unlock(&lock);
-		return SUCCESS;
-	}
-
-	else if (status == DB_TIMEOUT)
-	{
-		printf("No new data available in the ring buffer\n");
-		pthread_mutex_unlock(&lock);
-		return FE_ERR_HW;
-	}
-
-	else
-	{
-		printf("Error accessing the ring buffer\n");
-		pthread_mutex_unlock(&lock);
-		return FE_ERR_HW;
-	}
-		
-	return SUCCESS; //bk_size(pevent);
-}
-
-INT read_periodic_event(char *pevent, INT off)
-{
-	RPDA_BANK *pdata;
-	
-	pthread_mutex_lock(&lock);
-	EVENT_HEADER *pevent_header;
-	int status = rb_get_rp(rbh, (void **)&pevent_header, 0);
-//	printf("Starting periodic event\n");
-	if (status == DB_SUCCESS)
-	{
-		// Number of samples in the event
-		int num_samples = pevent_header->data_size;
-
-		bk_init32a(pevent);
-		// Create MIDAS bank called TPDA  and store the streamed data
-		bk_create(pevent, "RPDA", TID_WORD, (void **) &pdata);
-		memcpy(pdata->variable_name, (int16_t *)(pevent_header + 1), num_samples * sizeof(int16_t)); // Change variable_name
-
-		//int num_values = sizeof(buffer) / sizeof(buffer[0]);
-		bk_close(pevent, pdata->variable_name+num_samples);
-
-		// Incrememnt read pointer
-		rb_increment_rp(rbh, sizeof(EVENT_HEADER) + num_samples * sizeof(int16_t));
-		pthread_mutex_unlock(&lock);
-		return SUCCESS;
-	}
-
-	else if (status == DB_TIMEOUT)
-	{
-		printf("No new data available in the ring buffer\n");
-		pthread_mutex_unlock(&lock);
-		return FE_ERR_HW;
-	}
-
-	else
-	{
-		printf("Error accessing the ring buffer\n");
-		pthread_mutex_unlock(&lock);
-		return FE_ERR_HW;
-	}
-		
-	return SUCCESS; //bk_size(pevent);
-}
-
-
 INT interrupt_configure(INT cmd, INT source, PTYPE adr)
 {
 	switch(cmd)
@@ -541,3 +463,96 @@ INT interrupt_configure(INT cmd, INT source, PTYPE adr)
 		}
 	return SUCCESS;
 }
+
+/*********************************************************************\
+		Read data from the Red Pitaya TCP stream in a trigger event
+\*********************************************************************/
+
+INT read_trigger_event(char *pevent, INT off)
+{
+	//RPDA_BANK *pdata;
+	
+	//pthread_mutex_lock(&lock);
+	//EVENT_HEADER *pevent_header;
+	//int status = rb_get_rp(rbh, (void **) &pevent, 0);
+
+	//if (status == DB_SUCCESS)
+	//{
+		// Number of samples in the event
+	///	int num_samples = pevent_header->data_size;
+
+	//	bk_init32a(pevent);
+		// Create MIDAS bank called TPDA  and store the streamed data
+	//	bk_create(pevent, "TPDA", TID_WORD, (void **) &pdata);
+	//	memcpy(pdata->variable_name, (int16_t *)(pevent_header + 1), num_samples * sizeof(int16_t)); // Change variable_name
+
+		//int num_values = sizeof(buffer) / sizeof(buffer[0]);
+	//	bk_close(pevent, pdata->variable_name+num_samples);
+
+		// Incrememnt read pointer
+	//	rb_increment_rp(rbh, sizeof(EVENT_HEADER) + num_samples * sizeof(int16_t));
+	//	pthread_mutex_unlock(&lock);
+	//	return SUCCESS; //bk_size(pevent);
+	//}
+
+	//else if (status == DB_TIMEOUT)
+	//{
+	//	printf("No new data available in the ring buffer\n");
+	//	pthread_mutex_unlock(&lock);
+	//	return FE_ERR_HW;
+	//}
+
+	//else
+	//{
+	//	printf("Error accessing the ring buffer\n");
+	//	pthread_mutex_unlock(&lock);
+	//	return FE_ERR_HW;
+	//}
+		
+	return bk_size(pevent); //SUCCESS;
+}
+
+INT read_periodic_event(char *pevent, INT off)
+{
+	//RPDA_BANK *pdata;
+	
+	//pthread_mutex_lock(&lock);
+	//EVENT_HEADER *pevent_header;
+	//int status = rb_get_rp(rbh, (void **)&pevent_header, 0);
+//	printf("Starting periodic event\n");
+	//if (status == DB_SUCCESS)
+	//{
+		// Number of samples in the event
+	//	int num_samples = pevent_header->data_size;
+
+	//	bk_init32a(pevent);
+		// Create MIDAS bank called TPDA  and store the streamed data
+	//	bk_create(pevent, "RPDA", TID_WORD, (void **) &pdata);
+	//	memcpy(pdata->variable_name, (int16_t *)(pevent_header + 1), num_samples * sizeof(int16_t)); // Change variable_name
+
+		//int num_values = sizeof(buffer) / sizeof(buffer[0]);
+	//	bk_close(pevent, pdata->variable_name+num_samples);
+
+		// Incrememnt read pointer
+	//	rb_increment_rp(rbh, sizeof(EVENT_HEADER) + num_samples * sizeof(int16_t));
+	//	pthread_mutex_unlock(&lock);
+	//	return SUCCESS;  //bk_size(pevent);
+	//}
+
+	//else if (status == DB_TIMEOUT)
+	//{
+	//	printf("No new data available in the ring buffer\n");
+	//	pthread_mutex_unlock(&lock);
+	//	return FE_ERR_HW;
+	//}
+
+	//else
+	//{
+	//	printf("Error accessing the ring buffer\n");
+	//	pthread_mutex_unlock(&lock);
+	//	return FE_ERR_HW;
+	//}
+		
+	return bk_size(pevent);  //SUCCESS;
+}
+
