@@ -468,7 +468,7 @@ INT read_periodic_event(char *pevent, INT off)
 
 		bk_close(pevent, pdata + num_values);
 
-		//printf("Event size: %d bytes\n", bk_size(pevent));
+		printf("Event size: %d bytes\n", bk_size(pevent));
 	}
 
 	else if (bytes_read == 0)
