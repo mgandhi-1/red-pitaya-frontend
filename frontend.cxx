@@ -83,12 +83,6 @@ EQUIPMENT equipment[] = {
 #ifdef __cplusplus
 #endif
 
-// Structure to hold Red Pitaya data in the bank
-//typedef struct
-//{
-//	int16_t variable_name[1024]; //Example data size, ajust as necessary
-//} RPDA_BANK; 
-
 /****************************************************************************\
 
 	Initialize TCP stream connection to Red Pitaya
@@ -137,25 +131,10 @@ INT frontend_init()
 
 	pthread_mutex_init(&lock, NULL);
 
-	//install_poll_event(poll_trigger_event); // calls poll_trigger_event
-
 	// Initialize data acquisition and analysis threads
 	pthread_t acquisition_thread, analysis_thread;
 	pthread_create(&acquisition_thread, NULL, data_acquisition_thread, NULL);
 	pthread_create(&analysis_thread, NULL, data_analysis_thread, NULL);
-
-	//if (pthread_create(&acquisition_thread, NULL, data_acquisition_thread, NULL) != 0) 
-	//{
-    //	printf("Failed to create acquisition thread\n");
-    //	return FE_ERR_HW;
-	//}
-
-	//if (pthread_create(&analysis_thread, NULL, data_analysis_thread, NULL) != 0) 
-	//{
-    //	printf("Failed to create analysis thread\n");
-    //	return FE_ERR_HW;
-	//}
-
 
 	return SUCCESS;
 }
@@ -201,7 +180,7 @@ void* data_acquisition_thread(void* param)
 
 		if (!readout_enabled())
 		{
-			usleep(10); // do not produce events when run is stopped
+			usleep(1000); // do not produce events when run is stopped
 			continue;
 		}
 		// Acquire a write pointer in the ring buffer
@@ -210,7 +189,7 @@ void* data_acquisition_thread(void* param)
 			status = rb_get_wp(rbh, (void **) &pevent, 0);
 			if (status == DB_TIMEOUT)
 			{
-				usleep(5);
+				usleep(1000);
 				if (!is_readout_thread_enabled()) break;
 			}
 		} while (status != DB_SUCCESS);
@@ -219,9 +198,6 @@ void* data_acquisition_thread(void* param)
 
 		// Lock mutex before accessing shared resources
 		pthread_mutex_lock(&lock);
-
-		// Buffer for incoming data
-		//int16_t temp_buffer[4096] = {0};
 
 		bm_compose_event_threadsafe(pevent, 1, 0, 0, &equipment[0].serial_number);
         pdata = (WORD *)(pevent + 1);  // Set pdata to point to the data section of the event
@@ -300,7 +276,7 @@ void* data_analysis_thread(void* param)
 			if (status == DB_TIMEOUT)
 			{
 				pthread_mutex_unlock(&lock);
-				usleep(5);
+				usleep(1000);
 				if (!is_readout_thread_enabled()) break;
 			}
 		} while (status != DB_SUCCESS);
@@ -325,28 +301,6 @@ void* data_analysis_thread(void* param)
             continue;
         }
 
-		// Analyze data here
-		// Example analysis:
-		//int num_samples = pevent->data_size;// number of samples in the event
-		//printf("Number of samples available: %d\n", num_samples);
-
-		//int16_t *data = (int16_t *)(pevent + 1); // pointer to the data 
-
-		//for (int i = 1; i < num_samples; i++)
-		//{
-		//	if (data[i - 1] > 100000)
-		//	{
-		//		int derivative = data[i] - data[i - 1];
-		//		printf("Derivative at sample %d: %d\n", i, derivative); 
-	//			if (data[i] < -100000)
-	//			{
-					// Data does not meet criteria, so ignore it 
-	//				break;
-	//			}
-	//		}
-
-		//} 
-
 		pdata = (WORD *)(pevent + 1);
 
         // Perform data analysis here (e.g., calculating derivatives)
@@ -356,12 +310,6 @@ void* data_analysis_thread(void* param)
             int derivative = pdata[i] - pdata[i - 1];
             printf("Derivative at sample %d: %d\n", i, derivative);
         }
-		// Create bank and store the processed values
-	//	bk_init32a(pevent);
-	//	bk_create(pevent, "TEST", TID_WORD, (void **)&pdata);
-	//	memcpy(&pdata->variable_name[0], data, num_samples * sizeof(int16_t));
-		//pdata->variable_name[0] = num_samples;
-	//	bk_close(pevent, pdata->variable_name + num_samples);
 
 		// Mark the event as processed
 		rb_increment_rp(rbh, sizeof(EVENT_HEADER) + pevent->data_size);
@@ -421,7 +369,7 @@ INT frontend_loop()
 	//return frontend_init(); // Reinitialize the connection
 	//}
 	
-	usleep(5); // Prevent CPU overload, adjust as needed
+	usleep(1000); // Prevent CPU overload, adjust as needed
 	return SUCCESS;
 }
 
