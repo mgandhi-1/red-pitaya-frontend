@@ -19,7 +19,7 @@ public:
 	void AddAllCanvases()
 	{
 		// Set up tabbed canvases
-		AddSingleCanvas("RPDA");
+		AddSingleCanvas("DATA");
 		
 		// Choose how many events to skip before updating
 		SetNumberSkipEvent(100);
@@ -40,7 +40,7 @@ public:
 	{
 		void *ptr;
 		// Update histograms
-		int size = dataContainer.GetMidasData().LocateBank(NULL, "RPDA", &ptr);
+		int size = dataContainer.GetMidasData().LocateBank(NULL, "DATA", &ptr);
 		hist->Fill(size);
 	}
 
