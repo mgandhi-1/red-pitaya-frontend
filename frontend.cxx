@@ -540,16 +540,6 @@ INT read_periodic_event(char *pevent, INT off)
 	pthread_mutex_unlock(&lock);
 
 	header->data_size = bk_size(pevent);
-
-    // Add some placeholder data (e.g., dummy values)
-    //pdata[0] = 113;
-    //pdata[1] = 6999;
-
-    // Close the bank after writing data
-    //bk_close(pevent, pdata + 2);
-
-    // Set the event header's data size
-    //header->data_size = bk_size(pevent);
 		
 	return bk_size(pevent);  //SUCCESS;
 }
