@@ -200,6 +200,7 @@ void* data_acquisition_thread(void* param)
 
 		bm_compose_event_threadsafe(pevent, 1, 0, 0, &equipment[0].serial_number);
         pdata = (WORD *)(pevent + 1);  // Set pdata to point to the data section of the event
+		pthread_mutex_unlock(&lock);
 
 		// Initialize the bank and read data directly into the bank
         bk_init32a(pevent);
@@ -285,11 +286,11 @@ void* data_analysis_thread(void* param)
 			pthread_mutex_lock(&lock);
 
 			status = rb_get_rp(rbh, (void **) &pevent, 0);
-			printf("Ring buffer status: %d\n", status);
+			//printf("Ring buffer status: %d\n", status);
+			pthread_mutex_unlock(&lock);
 
 			if (status == DB_TIMEOUT)
 			{
-				pthread_mutex_unlock(&lock);
 				usleep(50);
 				if (!is_readout_thread_enabled()) break;
 			}
@@ -297,21 +298,22 @@ void* data_analysis_thread(void* param)
 
 		if (status != DB_SUCCESS) 
 		{
-			pthread_mutex_unlock(&lock);
+			printf("Error accessing the ring buffer: %d\n", status);
+			//pthread_mutex_unlock(&lock);
 			continue;
 		}
 
 		if (pevent == nullptr) 
         {
             printf("Error: pevent is null\n");
-            pthread_mutex_unlock(&lock);
+            //pthread_mutex_unlock(&lock);
             continue;
         }
         
         if (pevent->data_size <= 0)
         {
             printf("Error: data_size is not valid: %d\n", pevent->data_size);
-            pthread_mutex_unlock(&lock);
+            //pthread_mutex_unlock(&lock);
             continue;
         }
 
@@ -325,9 +327,9 @@ void* data_analysis_thread(void* param)
             printf("Derivative at sample %d: %d\n", i, derivative);
         }
 
+		pthread_mutex_lock(&lock);
 		// Mark the event as processed
 		rb_increment_rp(rbh, sizeof(EVENT_HEADER) + pevent->data_size);
-	
 		pthread_mutex_unlock(&lock);	
 
 	}
@@ -481,20 +483,73 @@ INT read_periodic_event(char *pevent, INT off)
     WORD *pdata;
 
     // Initialize the event
-    bk_init32(pevent);
+    bk_init32a(pevent);
 
     // Create a bank with dummy data
     bk_create(pevent, "DATA", TID_WORD, (void **)&pdata);
 
+	//pthread_mutex_lock(&lock);
+
+	EVENT_HEADER *ring_event = nullptr;
+	//int status = rb_get_rp(rbh, (void **)&ring_event, 0);
+
+	// Lock the mutex for accessing the ring buffer
+    struct timespec timeout;
+    clock_gettime(CLOCK_REALTIME, &timeout);
+    timeout.tv_sec += 5; // Timeout after 5 seconds
+
+	if (pthread_mutex_timedlock(&lock, &timeout) != 0) {
+        // If the mutex cannot be acquired, return a dummy event
+        printf("read_periodic_event: Timeout waiting for mutex lock\n");
+        pdata[0] = 0xDEAD; // Add placeholder data
+        pdata[1] = 0xBEEF;
+        bk_close(pevent, pdata + 2);
+        header->data_size = bk_size(pevent);
+        return bk_size(pevent);
+    }
+
+	int status = rb_get_rp(rbh, (void **)&ring_event, 0);
+
+	if (status == DB_SUCCESS && ring_event != nullptr)
+	{
+		WORD *ring_data = (WORD *)(ring_event + 1);
+		int num_words = ring_event->data_size / sizeof(WORD);
+
+		for (int i = 0; i < num_words; i++)
+		{
+			pdata[i] = ring_data[i];
+		}
+
+		bk_close(pevent, pdata + num_words);
+
+		//pthread_mutex_lock(&lock);
+		rb_increment_rp(rbh, sizeof(EVENT_HEADER) + ring_event->data_size);
+		//pthread_mutex_unlock(&lock);
+	}
+
+	else
+	{
+		// If no data, create a dummy event
+        printf("read_periodic_event: No data in ring buffer or error occurred\n");
+        pdata[0] = 0xBAD;
+        pdata[1] = 0xFEED;
+
+		bk_close(pevent, pdata);
+	}
+
+	pthread_mutex_unlock(&lock);
+
+	header->data_size = bk_size(pevent);
+
     // Add some placeholder data (e.g., dummy values)
-    pdata[0] = 113;
-    pdata[1] = 6999;
+    //pdata[0] = 113;
+    //pdata[1] = 6999;
 
     // Close the bank after writing data
-    bk_close(pevent, pdata + 2);
+    //bk_close(pevent, pdata + 2);
 
     // Set the event header's data size
-    header->data_size = bk_size(pevent);
+    //header->data_size = bk_size(pevent);
 		
 	return bk_size(pevent);  //SUCCESS;
 }
