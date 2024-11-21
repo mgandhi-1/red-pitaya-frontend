@@ -13,7 +13,7 @@ class MyRealTimePlot : public TRootanaDisplay {
 public:
     MyRealTimePlot() {
 	//	DisableRootOutput(true); // Disable default ROOT output files
-        hist = new TH1F("hist", "Data from Red Pitaya;Sample;Amplitude", 6000, -80, 80);
+        hist = new TH1F("hist", "Data from Red Pitaya", 6000, -80, 80);
     }
 
 	void AddAllCanvases()
