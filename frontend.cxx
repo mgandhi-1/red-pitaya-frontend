@@ -131,8 +131,8 @@ INT frontend_init()
 	//rbh[0] = get_event_rbh(0); // Ring buffer for data acquisition
     //rbh[1] = get_event_rbh(1); // Ring buffer for data analysis
     //printf("Ring buffer handles initialized: rbh[0]=%d, rbh[1]=%d\n", rbh[0], rbh[1]);
-	rbh = get_event_rbh(0); // Initialize the ring buffer here 
-	printf("Ring buffer handle: %d\n", rbh);
+	//rbh = get_event_rbh(0); // Initialize the ring buffer here 
+	//printf("Ring buffer handle: %d\n", rbh);
 
 	pthread_mutex_init(&lock, NULL);
 
@@ -170,6 +170,8 @@ void* data_acquisition_thread(void* param)
 	// Obtain ring buffer for inter-thread data exchange
 	EVENT_HEADER *pevent = NULL;
 	WORD *pdata = NULL;
+	rbh = get_event_rbh(0); // Initialize the ring buffer here 
+	//printf("Ring buffer handle: %d\n", rbh);
 	int status;
 
 	//Set a timeout for the recv function to prevent indefinite blocking
@@ -282,6 +284,7 @@ void* data_acquisition_thread(void* param)
 		pthread_mutex_unlock(&lock);
 	}
 	
+	printf("Exiting the data acquisition thread\n");
 	return NULL;
 }
 
@@ -292,8 +295,6 @@ void* data_acquisition_thread(void* param)
 void* data_analysis_thread(void* param)
 {
 	printf("Data analysis thread started\n");
-	// Obtain ring buffer for inter-thread data exchange
-	// int rbh = get_event_rbh(0);
 	EVENT_HEADER *pevent;
 	WORD *pdata;
 	
@@ -352,7 +353,7 @@ void* data_analysis_thread(void* param)
 		pthread_mutex_unlock(&lock);	
 
 	}
-
+	printf("Exiting the data analysis thread\n");
 	return NULL;
 }
 
