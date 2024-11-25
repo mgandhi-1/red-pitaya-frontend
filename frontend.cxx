@@ -544,7 +544,7 @@ INT read_periodic_event(char *pevent, INT off)
         // If the mutex cannot be acquired, return a dummy event
         printf("read_periodic_event: Timeout waiting for mutex lock\n");
         pdata[0] = 0xDEAD; // Add placeholder data
-        pdata[1] = 0xBEEF;
+        pdata[1] = 0xFEED;
         bk_close(pevent, pdata + 2);
         header->data_size = bk_size(pevent);
         return bk_size(pevent);
