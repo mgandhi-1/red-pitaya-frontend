@@ -38,7 +38,7 @@ BOOL frontend_call_loop = TRUE;
 
 INT display_period = 0; // update this later
 
-INT max_event_size = 50; // update later
+INT max_event_size = 200; // update later
 INT max_event_size_frag = 0;
 
 INT event_buffer_size = 100*50; //update later
@@ -159,14 +159,12 @@ void* data_acquisition_thread(void* param)
 {
 	printf("Data acquisition thread started\n");
 	// Obtain ring buffer for inter-thread data exchange
-	EVENT_HEADER *pevent = NULL;
-	INT16 *pdata = NULL; //, *padc = NULL;
-	INT16 buffer[max_event_size];
+	EVENT_HEADER *pevent;
+	INT16 *pdata; //, *padc = NULL;
+	INT16 buffer[event_buffer_size];
 	INT16 bytes_read;
 	INT status;
-
-	rbh = get_event_rbh(0); // Initialize the ring buffer here 
-	printf("Ring buffer handle: %d\n", rbh);
+	INT pbuffer = 0;
 
 	//Set a timeout for the recv function to prevent indefinite blocking
 	struct timeval timeout;
@@ -183,7 +181,14 @@ void* data_acquisition_thread(void* param)
 			continue;
 		}
 
-		if (rb_get_buffer_level(rbh, 0) >= event_buffer_size) 
+		if (rbh <= 0) 
+		{
+    		printf("Invalid ring buffer handle: %d\n", rbh);
+    		return NULL;
+		}
+
+
+		if (rb_get_buffer_level(rbh, &pbuffer) >= event_buffer_size) 
 		{
     		printf("Buffer is full; skipping data write\n");
     		usleep(50);
@@ -191,8 +196,6 @@ void* data_acquisition_thread(void* param)
 		}
 
 		// Acquire a write pointer in the ring buffer
-		//status = rb_get_wp(rbh, (void **)&pevent, 0);
-
 		do {
 			status = rb_get_wp(rbh, (void **)&pdata, 0);
 			printf("Status: %d\n:", status);
@@ -205,14 +208,14 @@ void* data_acquisition_thread(void* param)
 
 
 		//if (status != DB_SUCCESS) continue;
-		if (status != DB_SUCCESS || pevent == NULL)
+		if (status != DB_SUCCESS || pdata == NULL)
         {
             printf("Error: Failed to acquire write pointer in ring buffer\n");
 			usleep(100);
             continue;
         }
 		
-		pdata = (INT16 *)(pevent + 1);  // Set pdata to point to the data section of the event
+		//pdata = (INT16 *)(pevent + 1);  // Set pdata to point to the data section of the event
 
 		// Lock mutex before accessing shared resources
 		//pthread_mutex_lock(&lock);
@@ -255,7 +258,7 @@ void* data_acquisition_thread(void* param)
 			}
 
 			//pthread_mutex_lock(&lock);
-			rb_increment_wp(rbh, sizeof(EVENT_HEADER));
+			rb_increment_wp(rbh, bytes_read); //sizeof(EVENT_HEADER));
 			//pthread_mutex_unlock(&lock);
 
 			continue;
@@ -264,6 +267,13 @@ void* data_acquisition_thread(void* param)
 		printf("Data received: %d bytes\n", bytes_read);
 
 		int num_samples = bytes_read / sizeof(INT16);
+
+		if (num_samples > event_buffer_size)
+		{
+    		printf("Error: num_samples exceeds buffer size\n");
+    		continue;
+		}
+
 		for (int i = 1; i < num_samples; i++)
 		{
 			int derivative = buffer[i] - buffer[i-1];
@@ -281,7 +291,7 @@ void* data_acquisition_thread(void* param)
 		//pthread_mutex_unlock(&lock);
 
 		// Send event to ring buffer
-		rb_increment_wp(rbh, sizeof(EVENT_HEADER) + pevent->data_size); 
+		rb_increment_wp(rbh, bytes_read); //sizeof(EVENT_HEADER) + pevent->data_size); 
 		//pthread_mutex_unlock(&lock);
 		printf("Processed data stored in ring buffer: %d bytes\n", pevent->data_size);
 	}
@@ -502,11 +512,9 @@ INT read_trigger_event(char *pevent, INT off)
 INT read_periodic_event(char *pevent, INT off)
 {
 	EVENT_HEADER *header = (EVENT_HEADER *)pevent;
-    INT16 *pdata;
-	EVENT_HEADER *ring_event;
+    INT16 *pdata, *padc;
 	INT status;
-    // Initialize the event
-	//rbh = get_event_rbh(0);
+	//EVENT_HEADER *ring_event;
 
     bk_init32a(pevent);
 
@@ -515,9 +523,6 @@ INT read_periodic_event(char *pevent, INT off)
 
 	//pthread_mutex_lock(&lock);
 
-	
-	//int status = rb_get_rp(rbh, (void **)&ring_event, 0);
-	//printf("Ring buffer read status: %d\n", status);
 
 	// Lock the mutex for accessing the ring buffer
     struct timespec timeout;
@@ -526,41 +531,41 @@ INT read_periodic_event(char *pevent, INT off)
 
 	//if (pthread_mutex_timedlock(&lock, &timeout) != 0) {
         // If the mutex cannot be acquired, return a dummy event
-     //   printf("read_periodic_event: Timeout waiting for mutex lock\n");
-     //   pdata[0] = 0xDEAD; // Add placeholder data
-     //   pdata[1] = 0xFEED;
-     //   bk_close(pevent, pdata + 2);
-     //   header->data_size = bk_size(pevent);
-     //   return bk_size(pevent);
+      //  printf("read_periodic_event: Timeout waiting for mutex lock\n");
+      //  pdata[0] = 0xDEAD; // Add placeholder data
+      //  pdata[1] = 0xFEED;
+      //  bk_close(pevent, pdata + 2);
+      //  header->data_size = bk_size(pevent);
+      //  return bk_size(pevent);
     //}
 
-	status = rb_get_rp(rbh, (void **)&pdata, 0);
+	status = rb_get_rp(rbh, (void **)&padc, 0);
 	printf("Ring buffer read status: %d\n", status);
 
-	if (status == DB_SUCCESS && ring_event != nullptr)
+	if (status == DB_SUCCESS) // && ring_event != nullptr)
 	{
 		printf("The status is: %d\n", status);
-		printf("The event in the ring: %p\n", (void *)ring_event);
-		printf("The event in the ring: data_size = %d\n", ring_event->data_size);
+		//printf("The event in the ring: %p\n", (void *)ring_event);
+		//printf("The event in the ring: data_size = %d\n", ring_event->data_size);
 
-		INT16 *ring_data = (INT16 *)(ring_event + 1);
-		int num_words = ring_event->data_size / sizeof(INT16);
+		//INT16 *ring_data = (INT16 *)(ring_event + 1);
+		//int num_words = max_event_size;//ring_event->data_size / sizeof(INT16);
+		memcpy(pdata, padc, max_event_size);    //*sizeof(INT16));
+		//for (int i = 0; i < num_words; i++)
+		//{
+		//	pdata[i] = pdata[i]; //ring_data[i];
+		//}
 
-		for (int i = 0; i < num_words; i++)
-		{
-			pdata[i] = ring_data[i];
-		}
-
-		bk_close(pevent, pdata + num_words);
+		bk_close(pevent, pdata + max_event_size); //num_words);
 		header->data_size = bk_size(pevent);
 		//pthread_mutex_lock(&lock);
-		rb_increment_rp(rbh, sizeof(EVENT_HEADER) + ring_event->data_size);
+		rb_increment_rp(rbh, sizeof(EVENT_HEADER) + max_event_size); //(num_words * sizeof(INT16)));//ring_event->data_size);
 		//pthread_mutex_unlock(&lock);
 	}
 
 	//pthread_mutex_unlock(&lock);
 
-	//header->data_size = bk_size(pevent);
+	header->data_size = bk_size(pevent);
 	printf("event size: %d\n", bk_size(pevent));
 		
 	return bk_size(pevent);  //SUCCESS;
