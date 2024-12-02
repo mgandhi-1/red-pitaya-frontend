@@ -8,7 +8,7 @@ INCLUDES = -I$(MIDASSYS)/include
 LIBS = -L$(MIDASSYS)/lib -lmidas -lz -lutil -lpthread -lmfe
 
 # Compilation flags
-CXXFLAGS = $(INCLUDES)
+CXXFLAGS = $(INCLUDES) -g
 LDFLAGS = $(LIBS)
 
 # Target executable
