@@ -55,7 +55,6 @@ INT pause_run(INT run_number, char *error);
 INT resume_run(INT run_number, char *error);
 INT frontend_loop();
 INT rbh; // Ring buffer handle
-//int rbh[MAX_N_THREADS]; (MAX_N_THREADS = 32 defined in mfe.c)
 
 BOOL equipment_common_overwrite = true;
 
@@ -207,13 +206,6 @@ void* data_acquisition_thread(void* param)
 				if (!is_readout_thread_enabled()) break;
 			}
 		} while (status != DB_SUCCESS);
-
-		//if (status != DB_SUCCESS || pdata == NULL)
-        //{
-        //    printf("Error: Failed to acquire write pointer in ring buffer\n");
-		//	usleep(100);
-        //    continue;
-        //}
 
 		bytes_read = recv(stream_sockfd, buffer, max_event_size, 0);
 		printf("Data received: %ld bytes\n", bytes_read);
@@ -547,7 +539,6 @@ INT read_periodic_event(char *pevent, INT off)
 		pthread_mutex_unlock(&lock);
 	}
 
-	//header->data_size = bk_size(pevent);
 	return bk_size(pevent);  
 }
 
