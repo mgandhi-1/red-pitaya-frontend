@@ -457,6 +457,7 @@ INT read_trigger_event(char *pevent, INT off)
 	INT status;
 	
 	bk_init32a(pevent);
+	
 	bk_create(pevent, "TPDA", TID_INT32, (void **) &pdata);
 	//pthread_mutex_lock(&lock);
 
@@ -525,9 +526,7 @@ INT read_periodic_event(char *pevent, INT off)
         }
 
         // Safely copy data to the event bank
-        memcpy(pdata, padc, num_samples * sizeof(ssize_t));
-
-		//memcpy(pdata, padc, max_event_size * sizeof(ssize_t));    
+        memcpy(pdata, padc, num_samples * sizeof(ssize_t));  
 		
 		bk_close(pevent, pdata); 
 
@@ -541,4 +540,3 @@ INT read_periodic_event(char *pevent, INT off)
 
 	return bk_size(pevent);  
 }
-
