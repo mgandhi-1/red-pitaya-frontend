@@ -477,19 +477,12 @@ INT read_trigger_event(char *pevent, INT off)
 		}
 
 		bk_close(pevent, pdata + num_words);
+		header->data_size = bk_size(pevent);
+
 		pthread_mutex_lock(&lock);
 		rb_increment_rp(rbh, max_event_size);
 		pthread_mutex_unlock(&lock);
 	}
-
-	else
-	{
-		bk_close(pevent, pdata);
-	}
-
-	//pthread_mutex_unlock(&lock);
-
-	header->data_size = bk_size(pevent);
 		
 	return bk_size(pevent); 
 }
@@ -503,7 +496,7 @@ INT read_periodic_event(char *pevent, INT off)
     ssize_t *pdata = NULL, *padc = NULL;
 	INT status;
 
-    bk_init32a(pevent);
+	bk_init32a(pevent);
 
     // Create a bank with dummy data
     bk_create(pevent, "DATA", TID_INT32, (void **)&pdata);
@@ -511,7 +504,7 @@ INT read_periodic_event(char *pevent, INT off)
 	pthread_mutex_lock(&lock);
 	status = rb_get_rp(rbh, (void **)&padc, 0);
 	pthread_mutex_unlock(&lock);
-	printf("Ring buffer read status: %d\n", status);
+	//printf("Ring buffer read status: %d\n", status);
 
 	if (status == DB_SUCCESS && padc != NULL)  
 	{
@@ -524,17 +517,14 @@ INT read_periodic_event(char *pevent, INT off)
             printf("Error: num_samples is invalid: %ld\n", num_samples);
             return FE_ERR_HW;
         }
-
         // Safely copy data to the event bank
         memcpy(pdata, padc, num_samples * sizeof(ssize_t));  
-		
 		bk_close(pevent, pdata); 
-
 		header->data_size = bk_size(pevent);
-		printf("event size: %d\n", bk_size(pevent));
+		//printf("event size: %d\n", bk_size(pevent));
 
 		pthread_mutex_lock(&lock);
-		rb_increment_rp(rbh, max_event_size); 
+		rb_increment_rp(rbh, static_cast<int>(sizeof(EVENT_HEADER) + header->data_size)); 
 		pthread_mutex_unlock(&lock);
 	}
 
