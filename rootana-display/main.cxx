@@ -13,7 +13,7 @@ class MyRealTimePlot : public TRootanaDisplay {
 public:
     MyRealTimePlot() {
 	//	DisableRootOutput(true); // Disable default ROOT output files
-        hist = new TH1F("hist", "Data from Red Pitaya", 6000, -8000, 8000);
+        hist = new TH1F("hist", "Data from Red Pitaya", 6000, -50000000000000000, 50000000000000000);
     }
 
 	void AddAllCanvases()
@@ -22,7 +22,7 @@ public:
 		AddSingleCanvas("DATA");
 		
 		// Choose how many events to skip before updating
-		SetNumberSkipEvent(400);
+		SetNumberSkipEvent(10);
 
 		// Choose Display name
 		SetDisplayName("Red Pitaya Data Stream");
@@ -46,9 +46,9 @@ public:
 
 	void PlotCanvas(TDataContainer& dataContainer)
 	{
-		if(GetDisplayWindow()->GetCurrentTabName().compare("RPDA") == 0)
+		if(GetDisplayWindow()->GetCurrentTabName().compare("DATA") == 0)
 		{
-			TCanvas* c1 = GetDisplayWindow()->GetCanvas("RPDA");
+			TCanvas* c1 = GetDisplayWindow()->GetCanvas("DATA");
 			c1->Clear();
 			hist->Draw();
 			c1->Modified();
