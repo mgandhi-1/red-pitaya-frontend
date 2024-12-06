@@ -220,7 +220,7 @@ void* data_acquisition_thread(void* param)
 
 			} else if (errno == EWOULDBLOCK || errno ==EAGAIN)
 			{
-				printf("Receive timeout\n");
+				printf("Receive timeout\n");			
 				continue;
 			}
 
@@ -248,7 +248,13 @@ void* data_acquisition_thread(void* param)
 		pthread_mutex_lock(&lock);
 		for (ssize_t i = 1; i < num_samples; i++)
 		{
-			ssize_t derivative = buffer[i] - buffer[i-1];
+			ssize_t derivative = (buffer[i] - buffer[i-1]) / 10000000000000;
+
+			if (derivative == 0)
+			{
+				continue;
+			}
+
 			pdata[i-1] = derivative;
 			printf("Derivative at sample %ld: %ld\n", i, derivative);
 		}
@@ -272,7 +278,7 @@ void* data_acquisition_thread(void* param)
 	
 		// Unlock mutex after writing to the buffer
 		pthread_mutex_lock(&lock);
-		rb_increment_wp(rbh, max_event_size); 
+		rb_increment_wp(rbh, static_cast<int>(sizeof(EVENT_HEADER) + pevent->data_size)); 
 		pthread_mutex_unlock(&lock);
 		
 	}
@@ -480,7 +486,7 @@ INT read_trigger_event(char *pevent, INT off)
 		header->data_size = bk_size(pevent);
 
 		pthread_mutex_lock(&lock);
-		rb_increment_rp(rbh, max_event_size);
+		rb_increment_rp(rbh, static_cast<int>(sizeof(EVENT_HEADER) + header->data_size));
 		pthread_mutex_unlock(&lock);
 	}
 		
@@ -512,21 +518,27 @@ INT read_periodic_event(char *pevent, INT off)
 
 		// Ensure we don't exceed the buffer size
         ssize_t num_samples = max_event_size / sizeof(ssize_t);
-        if (num_samples <= 0)
-        {
-            printf("Error: num_samples is invalid: %ld\n", num_samples);
-            return FE_ERR_HW;
-        }
+        //if (num_samples <= 0)
+        //{
+        //    printf("Error: num_samples is invalid: %ld\n", num_samples);
+        //    return FE_ERR_HW;
+        //}
+		
         // Safely copy data to the event bank
         memcpy(pdata, padc, num_samples * sizeof(ssize_t));  
 		bk_close(pevent, pdata); 
-		header->data_size = bk_size(pevent);
+		//header->data_size = bk_size(pevent);
 		//printf("event size: %d\n", bk_size(pevent));
 
-		pthread_mutex_lock(&lock);
-		rb_increment_rp(rbh, static_cast<int>(sizeof(EVENT_HEADER) + header->data_size)); 
-		pthread_mutex_unlock(&lock);
+		//pthread_mutex_lock(&lock);
+		//rb_increment_rp(rbh, static_cast<int>(sizeof(EVENT_HEADER) + header->data_size)); 
+		//pthread_mutex_unlock(&lock);
 	}
+
+	header->data_size = bk_size(pevent)/4;
+	pthread_mutex_lock(&lock);
+	rb_increment_rp(rbh, static_cast<int>(sizeof(EVENT_HEADER) + header->data_size)); 
+	pthread_mutex_unlock(&lock);
 
 	return bk_size(pevent);  
 }
