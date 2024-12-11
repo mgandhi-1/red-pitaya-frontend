@@ -462,7 +462,7 @@ INT read_trigger_event(char *pevent, INT off)
 	ssize_t *pdata;
 	INT status;
 	
-	bk_init32a(pevent);
+	bk_init32(pevent);
 	
 	bk_create(pevent, "TPDA", TID_INT32, (void **) &pdata);
 	//pthread_mutex_lock(&lock);
@@ -502,7 +502,7 @@ INT read_periodic_event(char *pevent, INT off)
     ssize_t *pdata = NULL, *padc = NULL;
 	INT status;
 
-	bk_init32a(pevent);
+	bk_init32(pevent);
 
     // Create a bank with dummy data
     bk_create(pevent, "DATA", TID_INT32, (void **)&pdata);
@@ -527,15 +527,15 @@ INT read_periodic_event(char *pevent, INT off)
         // Safely copy data to the event bank
         memcpy(pdata, padc, num_samples * sizeof(ssize_t));  
 		bk_close(pevent, pdata); 
-		//header->data_size = bk_size(pevent);
-		//printf("event size: %d\n", bk_size(pevent));
+		header->data_size = bk_size(pevent)/4;
+		printf("event size: %d\n", bk_size(pevent));
 
 		//pthread_mutex_lock(&lock);
 		//rb_increment_rp(rbh, static_cast<int>(sizeof(EVENT_HEADER) + header->data_size)); 
 		//pthread_mutex_unlock(&lock);
 	}
 
-	header->data_size = bk_size(pevent)/4;
+	
 	pthread_mutex_lock(&lock);
 	rb_increment_rp(rbh, static_cast<int>(sizeof(EVENT_HEADER) + header->data_size)); 
 	pthread_mutex_unlock(&lock);
