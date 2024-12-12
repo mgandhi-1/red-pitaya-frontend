@@ -13,12 +13,19 @@ LDFLAGS = -L$(MIDAS_LIB) -L$(ROOTANA_LIB) -L/home/mgandhi/packages/rootana/libAn
 
 # Target and sources
 TARGET = realtimeplot
-SRC = main.cxx
+SRC = main.cxx TRedPitayaCanvas.cxx
+OBJ = $(SRC:.cxx=.o)
 
 # Build target
-$(TARGET): $(SRC)
-	$(CXX) $(CXXFLAGS) -o $(TARGET) $(SRC) $(LDFLAGS)
+$(TARGET): $(OBJ)
+	$(CXX) $(CXXFLAGS) -o $(TARGET) $(OBJ) $(LDFLAGS)
+
+# Build object files
+%.o: %.cxx
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 # Clean target
 clean:
-	rm -f $(TARGET)
+	rm -f $(TARGET) $(OBJ)
+
+
