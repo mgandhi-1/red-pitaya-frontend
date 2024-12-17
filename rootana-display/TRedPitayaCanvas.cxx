@@ -3,14 +3,8 @@
 
 TRedPitayaCanvas::TRedPitayaCanvas() : TCanvasHandleBase("Red Pitaya Data")
 {
-	for (int i = 0; i < 32; i++)
-	{
-		char name[100];
-		char title[100];
-		sprintf(name, "derivateHist_%i", i);
-		sprintf(title, "Data for Channel %i", i);
-		derivativeHist[i] = new TH1F(name, title, 1000, -1500, 1500);
-	}
+	derivativeHist = new TH1F("DerivateHist", "Data for Channel 0", 5000, 0 , 5000);
+	derivativeHist->GetYaxis()->SetRangeUser(-1500, 1500); 
 }
 
 void TRedPitayaCanvas::SetUpCompositeFrame(TGCompositeFrame *compFrame, TRootanaDisplay *display)
@@ -32,26 +26,32 @@ void TRedPitayaCanvas::SetUpCompositeFrame(TGCompositeFrame *compFrame, TRootana
 
 void TRedPitayaCanvas::ResetCanvasHistograms()
 {
-	for (int i = 0; i < 256; i++)
-	{
-		derivativeHist[i]->Reset();
-	}
+	derivativeHist->Reset();
 }
 
 void TRedPitayaCanvas::UpdateCanvasHistograms(TDataContainer& dataContainer)
 {
-	MyData *data = dataContainer.GetEventData<MyData>("DATA");
+	std::cout << "Available Banks: " << dataContainer.GetMidasEvent().GetBankList() << std::endl;
+
+	std::cout << "Address of DATA bank: " << dataContainer.GetEventData<MyData>("DATA") << std::endl;
+
+
+	MyData* data = dataContainer.GetEventData<MyData>("DATA");
+	if (!data) 
+	{
+    	std::cerr << "Error: Failed to retrieve DATA bank!" << std::endl;
+    	return;
+	}
+
+	std::cout << "Number of samples: " << data->GetNumSamples() << std::endl;
+
 	if (data) 
 	{
-		size_t numSamples = data->GetNumSamples();
-		for (size_t i = 0; i < numSamples; i++)
+		int numSamples = data->GetNumSamples();
+		for (int i = 0; i < numSamples; i++)
 		{
 			int sample = data->GetSample(i);
-			int channel = i % 256;
-			if (channel >= 0 && channel < 256)
-			{
-				derivativeHist[channel]->Fill(sample);
-			}
+			derivativeHist-> Fill(i, sample);
 		}
 	}
 }
@@ -60,11 +60,9 @@ void TRedPitayaCanvas::PlotCanvas(TDataContainer& dataContainer, TRootEmbeddedCa
 {
 	TCanvas *canvas = embedCanvas->GetCanvas();
 	canvas->Clear();
-	int selectedChannel = fChannelSelector->GetNumberEntry()->GetIntNumber();
-	if (selectedChannel >= 0 && selectedChannel < 256)
-	{
-		derivativeHist[selectedChannel]->Draw();
-	}
+	//int selectedChannel = fChannelSelector->GetNumberEntry()->GetIntNumber();
+	
+	derivativeHist-> Draw();
 
 	canvas->Modified();
 	canvas->Update();
