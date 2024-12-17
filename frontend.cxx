@@ -502,10 +502,16 @@ INT read_periodic_event(char *pevent, INT off)
     ssize_t *pdata = NULL, *padc = NULL;
 	INT status;
 
-	bk_init32(pevent);
+	bk_init32a(pevent);
 
     // Create a bank with dummy data
     bk_create(pevent, "DATA", TID_INT32, (void **)&pdata);
+
+	if (pdata == NULL) {
+        printf("Error: pdata is NULL after bk_create.\n");
+        return FE_ERR_HW;
+    }
+
 
 	pthread_mutex_lock(&lock);
 	status = rb_get_rp(rbh, (void **)&padc, 0);
@@ -518,23 +524,25 @@ INT read_periodic_event(char *pevent, INT off)
 
 		// Ensure we don't exceed the buffer size
         ssize_t num_samples = max_event_size / sizeof(ssize_t);
-        //if (num_samples <= 0)
-        //{
-        //    printf("Error: num_samples is invalid: %ld\n", num_samples);
-        //    return FE_ERR_HW;
-        //}
+
+        if (num_samples <= 0)
+        {
+        	printf("Error: num_samples is invalid: %ld\n", num_samples);
+            return FE_ERR_HW;
+        }
 		
+		//printf("pdata: %n, padc: %n, num_samples: %ld\n", pdata, padc, num_samples);
+
         // Safely copy data to the event bank
         memcpy(pdata, padc, num_samples * sizeof(ssize_t));  
+		header->data_size = bk_size(pevent);
 		bk_close(pevent, pdata); 
-		header->data_size = bk_size(pevent)/4;
 		printf("event size: %d\n", bk_size(pevent));
 
 		//pthread_mutex_lock(&lock);
 		//rb_increment_rp(rbh, static_cast<int>(sizeof(EVENT_HEADER) + header->data_size)); 
 		//pthread_mutex_unlock(&lock);
 	}
-
 	
 	pthread_mutex_lock(&lock);
 	rb_increment_rp(rbh, static_cast<int>(sizeof(EVENT_HEADER) + header->data_size)); 
