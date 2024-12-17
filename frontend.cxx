@@ -535,15 +535,19 @@ INT read_periodic_event(char *pevent, INT off)
 
         // Safely copy data to the event bank
         memcpy(pdata, padc, num_samples * sizeof(ssize_t));  
-		header->data_size = bk_size(pevent);
-		bk_close(pevent, pdata); 
-		printf("event size: %d\n", bk_size(pevent));
+		//header->data_size = bk_size(pevent);
+		//bk_close(pevent, pdata); 
+		//printf("event size: %d\n", bk_size(pevent));
 
 		//pthread_mutex_lock(&lock);
 		//rb_increment_rp(rbh, static_cast<int>(sizeof(EVENT_HEADER) + header->data_size)); 
 		//pthread_mutex_unlock(&lock);
 	}
 	
+	header->data_size = bk_size(pevent);
+	bk_close(pevent, pdata); 
+	printf("event size: %d\n", bk_size(pevent));
+
 	pthread_mutex_lock(&lock);
 	rb_increment_rp(rbh, static_cast<int>(sizeof(EVENT_HEADER) + header->data_size)); 
 	pthread_mutex_unlock(&lock);
