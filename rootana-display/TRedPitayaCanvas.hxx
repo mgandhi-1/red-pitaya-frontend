@@ -7,17 +7,19 @@
 
 #include "TH1F.h"
 #include "TCanvasHandleBase.hxx"
+#include "TGenericData.hxx"
 #include "TGNumberEntry.h"
 #include "TDataContainer.hxx"
 #include "TV792Data.hxx"
 
 // Custom class for interpreting Red Pitaya Data in MIDAS data banks
-class MyData {
+class MyData : public TGenericData {
 public: 
-	MyData(void* ptr, int size)
+	MyData(int bankLen, int bankType, const char* bankName, void* ptr)
+	: TGenericData(bankLen, bankType, bankName, ptr)
 	{
 		data = static_cast<int*>(ptr);
-		num_samples = size / sizeof(int);
+		num_samples = bankLen / sizeof(int);
 	}
 
 	int GetSample(size_t index) const {
@@ -57,7 +59,7 @@ public :
 	}
 
 private: 
-	TH1F *derivativeHist[256];
+	TH1F *derivativeHist;
 	TGNumberEntry *fChannelSelector;
 };
 
