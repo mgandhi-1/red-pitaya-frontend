@@ -38,10 +38,10 @@ BOOL frontend_call_loop = false;
 
 INT display_period = 0; // update this later
 
-INT max_event_size = 2056; // update later
+INT max_event_size = 1024; // update later
 INT max_event_size_frag = 0;
 
-INT event_buffer_size = 4*2056; //update later
+INT event_buffer_size = 4*1024; //update later
 
 // Forward Declarations
 INT frontend_init();
