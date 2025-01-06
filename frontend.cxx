@@ -38,10 +38,10 @@ BOOL frontend_call_loop = false;
 
 INT display_period = 0; // update this later
 
-INT max_event_size = 1000; // update later
+INT max_event_size = 2056; // update later
 INT max_event_size_frag = 0;
 
-INT event_buffer_size = 10*1000; //update later
+INT event_buffer_size = 4*2056; //update later
 
 // Forward Declarations
 INT frontend_init();
@@ -56,7 +56,7 @@ INT resume_run(INT run_number, char *error);
 INT frontend_loop();
 INT rbh; // Ring buffer handle
 
-BOOL equipment_common_overwrite = true;
+BOOL equipment_common_overwrite = false;
 
 void* data_acquisition_thread(void* param);
 //void* data_analysis_thread(void* param);
@@ -160,8 +160,8 @@ void* data_acquisition_thread(void* param)
 	
 	EVENT_HEADER *pevent = NULL;
 	ssize_t *pdata = NULL; 
-	ssize_t buffer[4000];
-	UINT16 bytes_read;
+	ssize_t buffer[2000];
+	ssize_t bytes_read;
 	INT status;
 	INT pbuffer = 0;
 
@@ -208,7 +208,7 @@ void* data_acquisition_thread(void* param)
 		} while (status != DB_SUCCESS);
 
 		bytes_read = recv(stream_sockfd, buffer, max_event_size, 0);
-		printf("Data received: %d bytes\n", bytes_read);
+		printf("Data received: %ld bytes\n", bytes_read);
 
 
 		if (bytes_read <= 0)
@@ -554,11 +554,11 @@ INT read_trigger_event(char *pevent, INT off)
 INT read_periodic_event(char *pevent, INT off)
 {
     EVENT_HEADER *header = (EVENT_HEADER *)pevent;
-    UINT16 *pdata = NULL, *padc = NULL;
+    ssize_t *pdata = NULL, *padc = NULL;
     INT status;
 
     bk_init32a(pevent);
-	bk_create(pevent, "DATA", TID_UINT16, (void **)&pdata);
+	bk_create(pevent, "DATA", TID_INT32, (void **)&pdata);
    
     pthread_mutex_lock(&lock);
     status = rb_get_rp(rbh, (void **)&padc, 0);
@@ -569,15 +569,23 @@ INT read_periodic_event(char *pevent, INT off)
         return FE_ERR_HW;
     }
 
-    // Safely copy data
-    memcpy(pdata, padc, max_event_size);
+	ssize_t dataSize = max_event_size;
 
-    bk_close(pevent, pdata); 
-    header->data_size = bk_size(pevent)/2;
-    printf("Event size: %d\n", header->data_size);
+	// Safely copy data
+    memcpy(pdata, padc, dataSize);
+
+	ssize_t alignedSize = (dataSize + 7) & ~ 7;
+
+	//if (alignedSize > dataSize) {
+    //    memset((char *)pdata + dataSize, 0, alignedSize - dataSize);
+   // }
+
+    bk_close(pevent, pdata + dataSize / sizeof(ssize_t)); 
+    //header->data_size = static_cast<DWORD>(alignedSize);
+    //printf("Event size: %d\n", header->data_size);
 
     pthread_mutex_lock(&lock);
-    rb_increment_rp(rbh, static_cast<int>(sizeof(EVENT_HEADER) + header->data_size)); 
+    rb_increment_rp(rbh, static_cast<int>(sizeof(EVENT_HEADER) + alignedSize)); 
     pthread_mutex_unlock(&lock);
 
     return bk_size(pevent);  
