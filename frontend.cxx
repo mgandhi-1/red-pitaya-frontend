@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <math.h>
+#include <array>
 #include <stdint.h>
 #include <sys/time.h>
 #include <sys/types.h>
@@ -160,7 +161,7 @@ void* data_acquisition_thread(void* param)
 	
 	EVENT_HEADER *pevent = NULL;
 	ssize_t *pdata = NULL; 
-	ssize_t buffer[2000];
+	ssize_t buffer[2056];
 	ssize_t bytes_read;
 	INT status;
 	INT pbuffer = 0;
@@ -459,7 +460,7 @@ INT read_trigger_event(char *pevent, INT off)
 	
 	bk_init32(pevent);
 	
-	bk_create(pevent, "TPDA", TID_INT32, (void **) &pdata);
+	bk_create(pevent, "TPDA", TID_INT, (void **) &pdata);
 	//pthread_mutex_lock(&lock);
 
 	EVENT_HEADER *ring_event = nullptr;
@@ -558,13 +559,13 @@ INT read_periodic_event(char *pevent, INT off)
     INT status;
 
     bk_init32a(pevent);
-	bk_create(pevent, "DATA", TID_INT32, (void **)&pdata);
+	bk_create(pevent, "DATA", TID_INT, (void **)&pdata);
    
     pthread_mutex_lock(&lock);
     status = rb_get_rp(rbh, (void **)&padc, 0);
-    pthread_mutex_unlock(&lock);
+	pthread_mutex_unlock(&lock);
 
-    if (status != DB_SUCCESS || padc == NULL) {
+	if (status != DB_SUCCESS && padc == NULL) {
         printf("Error: Failed to get read pointer or padc is NULL.\n");
         return FE_ERR_HW;
     }
@@ -581,7 +582,7 @@ INT read_periodic_event(char *pevent, INT off)
    // }
 
     bk_close(pevent, pdata + dataSize / sizeof(ssize_t)); 
-    //header->data_size = static_cast<DWORD>(alignedSize);
+    header->data_size = static_cast<DWORD>(alignedSize);
     //printf("Event size: %d\n", header->data_size);
 
     pthread_mutex_lock(&lock);
