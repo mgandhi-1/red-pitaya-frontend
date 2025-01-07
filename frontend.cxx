@@ -119,7 +119,7 @@ INT frontend_init()
 
 	pthread_mutex_init(&lock, NULL);
 	
-	INT status = rb_create(event_buffer_size, max_event_size, &rbh);
+	INT status = rb_create(2056, max_event_size, &rbh);
 
     if (status != DB_SUCCESS) {
         printf("Error creating ring buffer: %d\n", status);
@@ -160,7 +160,7 @@ void* data_acquisition_thread(void* param)
 	
 	EVENT_HEADER *pevent = NULL;
 	ssize_t *pdata = NULL; 
-	ssize_t buffer[2000];
+	ssize_t buffer[2056];
 	ssize_t bytes_read;
 	INT status;
 	INT pbuffer = 0;
@@ -207,7 +207,7 @@ void* data_acquisition_thread(void* param)
 			}
 		} while (status != DB_SUCCESS);
 
-		bytes_read = recv(stream_sockfd, buffer, max_event_size, 0);
+		bytes_read = recv(stream_sockfd, buffer, sizeof(buffer), 0);
 		printf("Data received: %ld bytes\n", bytes_read);
 
 
@@ -459,7 +459,7 @@ INT read_trigger_event(char *pevent, INT off)
 	
 	bk_init32(pevent);
 	
-	bk_create(pevent, "TPDA", TID_INT32, (void **) &pdata);
+	bk_create(pevent, "TPDA", TID_INT, (void **) &pdata);
 	//pthread_mutex_lock(&lock);
 
 	EVENT_HEADER *ring_event = nullptr;
@@ -558,7 +558,7 @@ INT read_periodic_event(char *pevent, INT off)
     INT status;
 
     bk_init32a(pevent);
-	bk_create(pevent, "DATA", TID_INT32, (void **)&pdata);
+	bk_create(pevent, "DATA", TID_INT, (void **)&pdata);
    
     pthread_mutex_lock(&lock);
     status = rb_get_rp(rbh, (void **)&padc, 0);
@@ -581,7 +581,7 @@ INT read_periodic_event(char *pevent, INT off)
    // }
 
     bk_close(pevent, pdata + dataSize / sizeof(ssize_t)); 
-    //header->data_size = static_cast<DWORD>(alignedSize);
+    header->data_size = static_cast<DWORD>(alignedSize);
     //printf("Event size: %d\n", header->data_size);
 
     pthread_mutex_lock(&lock);
