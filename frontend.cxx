@@ -120,7 +120,7 @@ INT frontend_init()
 
 	pthread_mutex_init(&lock, NULL);
 	
-	INT status = rb_create(event_buffer_size, max_event_size, &rbh);
+	INT status = rb_create(2056, max_event_size, &rbh);
 
     if (status != DB_SUCCESS) {
         printf("Error creating ring buffer: %d\n", status);
@@ -208,7 +208,7 @@ void* data_acquisition_thread(void* param)
 			}
 		} while (status != DB_SUCCESS);
 
-		bytes_read = recv(stream_sockfd, buffer, max_event_size, 0);
+		bytes_read = recv(stream_sockfd, buffer, sizeof(buffer), 0);
 		printf("Data received: %ld bytes\n", bytes_read);
 
 
