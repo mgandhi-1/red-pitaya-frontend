@@ -42,7 +42,7 @@ INT display_period = 0; // update this later
 INT max_event_size = 1024; // update later
 INT max_event_size_frag = 0;
 
-INT event_buffer_size = 4*1024; //update later
+INT event_buffer_size = 8*1024; //update later
 
 // Forward Declarations
 INT frontend_init();
@@ -120,7 +120,7 @@ INT frontend_init()
 
 	pthread_mutex_init(&lock, NULL);
 	
-	INT status = rb_create(2056, max_event_size, &rbh);
+	INT status = rb_create(event_buffer_size, max_event_size, &rbh);
 
     if (status != DB_SUCCESS) {
         printf("Error creating ring buffer: %d\n", status);
@@ -168,7 +168,7 @@ void* data_acquisition_thread(void* param)
 
 	//Set a timeout for the recv function to prevent indefinite blocking
 	struct timeval timeout;
-	timeout.tv_sec = 10; //seconds
+	timeout.tv_sec = 15; //seconds
 	timeout.tv_usec = 0; // 0 microseconds
 	setsockopt(stream_sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
 
@@ -253,7 +253,7 @@ void* data_acquisition_thread(void* param)
 			}
 
 			pdata[i-1] = derivative;
-			printf("Derivative at sample %ld: %ld\n", i, derivative);
+			//printf("Derivative at sample %ld: %ld\n", i, derivative);
 		}
 		pthread_mutex_unlock(&lock);
 		 // Adjust data pointers after reading
@@ -271,6 +271,7 @@ void* data_acquisition_thread(void* param)
 		}
 
         pevent->data_size = static_cast<DWORD>(bytes_read);
+		printf("Updated pevent->data_size: %u bytes\n", pevent->data_size);
 	
 		// Unlock mutex after writing to the buffer
 		pthread_mutex_lock(&lock);
@@ -458,9 +459,9 @@ INT read_trigger_event(char *pevent, INT off)
 	ssize_t *pdata;
 	INT status;
 	
-	bk_init32(pevent);
+	bk_init32a(pevent);
 	
-	bk_create(pevent, "TPDA", TID_INT, (void **) &pdata);
+	bk_create(pevent, "TPDA", TID_INT, (void **)&pdata);
 	//pthread_mutex_lock(&lock);
 
 	EVENT_HEADER *ring_event = nullptr;
@@ -554,6 +555,7 @@ INT read_trigger_event(char *pevent, INT off)
 //}
 INT read_periodic_event(char *pevent, INT off)
 {
+	printf("Starting the reading of periodic events here!\n");
     EVENT_HEADER *header = (EVENT_HEADER *)pevent;
     ssize_t *pdata = NULL, *padc = NULL;
     INT status;
@@ -561,14 +563,15 @@ INT read_periodic_event(char *pevent, INT off)
     bk_init32a(pevent);
 	bk_create(pevent, "DATA", TID_INT, (void **)&pdata);
    
-    pthread_mutex_lock(&lock);
+    //pthread_mutex_lock(&lock);
     status = rb_get_rp(rbh, (void **)&padc, 0);
-	pthread_mutex_unlock(&lock);
+	printf("status after rb_get_rp in read_periodic_event: %d\n", status);
+	//pthread_mutex_unlock(&lock);
 
-	if (status != DB_SUCCESS && padc == NULL) {
-        printf("Error: Failed to get read pointer or padc is NULL.\n");
-        return FE_ERR_HW;
-    }
+	//if (status != DB_SUCCESS && padc == NULL) {
+    //    printf("Error: Failed to get read pointer or padc is NULL.\n");
+	//	//return FE_ERR_HW;
+    //}
 
 	ssize_t dataSize = max_event_size;
 
@@ -585,9 +588,10 @@ INT read_periodic_event(char *pevent, INT off)
     header->data_size = static_cast<DWORD>(alignedSize);
     //printf("Event size: %d\n", header->data_size);
 
-    pthread_mutex_lock(&lock);
+    //pthread_mutex_lock(&lock);
     rb_increment_rp(rbh, static_cast<int>(sizeof(EVENT_HEADER) + alignedSize)); 
-    pthread_mutex_unlock(&lock);
+    //pthread_mutex_unlock(&lock);
 
+	printf("Exiting the reading of periodic events here!\n");
     return bk_size(pevent);  
 }
