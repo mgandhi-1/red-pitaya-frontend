@@ -14,4 +14,6 @@
 
 --> odbedit -c "load dump.json"
 
+5. To save terminal output when running the frontend
 
+--> ./frontend > log.txt (filename can be any "xyz".txt)
