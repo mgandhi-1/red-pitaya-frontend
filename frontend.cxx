@@ -169,7 +169,7 @@ void* data_acquisition_thread(void* param)
 
 	//Set a timeout for the recv function to prevent indefinite blocking
 	struct timeval timeout;
-	timeout.tv_sec = 10; //seconds
+	timeout.tv_sec = 20; //seconds
 	timeout.tv_usec = 0; // 0 microseconds
 	setsockopt(stream_sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
 
@@ -286,7 +286,7 @@ void* data_analysis_thread(void* param)
 			pthread_mutex_lock(&lock);
 
 			status = rb_get_rp(rbh, (void **) &pevent, 0);
-			printf("Ring buffer status: %d\n", status);
+			printf("Ring buffer status in data acquisition thread: %d\n", status);
 
 			if (status == DB_TIMEOUT)
 			{
@@ -304,14 +304,14 @@ void* data_analysis_thread(void* param)
 
 		if (pevent == nullptr) 
         {
-            printf("Error: pevent is null\n");
+            printf("Error: pevent is null in data acquisition thread\n");
             pthread_mutex_unlock(&lock);
             continue;
         }
         
         if (pevent->data_size <= 0)
         {
-            printf("Error: data_size is not valid: %d\n", pevent->data_size);
+            printf("Error: data_size is not valid in data acquisition: %d\n", pevent->data_size);
             pthread_mutex_unlock(&lock);
             continue;
         }
@@ -378,11 +378,11 @@ INT resume_run(INT run_number, char *error)
 \********************************************************************/
 INT frontend_loop()
 {
-	//if (stream_sockfd < 0)
-	//{	
-	//printf("Stream connection lost, attempting to reconnect...\n");
-	//return frontend_init(); // Reinitialize the connection
-	//}
+	if (stream_sockfd < 0)
+	{	
+		printf("Stream connection lost, attempting to reconnect...\n");
+		return frontend_init(); // Reinitialize the connection
+	}
 	
 	usleep(1000); // Prevent CPU overload, adjust as needed
 	return SUCCESS;
