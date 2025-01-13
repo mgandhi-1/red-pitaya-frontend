@@ -282,7 +282,7 @@ void* data_acquisition_thread(void* param)
 		
 	}
 	
-	free(pevent);
+	//free(pevent);
 	printf("Exiting the data acquisition thread\n");
 	return NULL;
 }
@@ -459,7 +459,7 @@ INT read_trigger_event(char *pevent, INT off)
 {
 	EVENT_HEADER *header = (EVENT_HEADER *)pevent;
 	int32_t *pdata = nullptr;
-	INT status;
+	INT status = 0;
 	
 	bk_init32a(pevent);
 	
@@ -537,13 +537,15 @@ INT read_periodic_event(char *pevent, INT off)
         // Safely copy data to the event bank
         memcpy(pdata, padc, num_samples * sizeof(int32_t));  
 		bk_close(pevent, pdata); 
-		header->data_size = bk_size(pevent);
-		printf("event size in periodic even readout: %d\n", bk_size(pevent));
+		//header->data_size = bk_size(pevent);
+		//printf("event size in periodic event readout: %d\n", bk_size(pevent));
 
 		//pthread_mutex_lock(&lock);
 		//rb_increment_rp(rbh, static_cast<int>(sizeof(EVENT_HEADER) + header->data_size)); 
 		//pthread_mutex_unlock(&lock);
 	}
+	header->data_size = bk_size(pevent);
+	printf("event size in periodic event readout: %d\n", bk_size(pevent));
 	rb_increment_rp(rbh, static_cast<int>(sizeof(EVENT_HEADER) + header->data_size)); 
 	return bk_size(pevent);  
 }
