@@ -211,7 +211,7 @@ void* data_acquisition_thread(void* param)
 
 		bytes_read = recv(stream_sockfd, buffer, sizeof(buffer), 0);
 		printf("Data received: %d bytes\n", bytes_read);
-
+		printf("Received data: %s\n", buffer);
 
 		if (bytes_read <= 0)
 		{
@@ -513,7 +513,7 @@ INT read_periodic_event(char *pevent, INT off)
 
 
 //	pthread_mutex_lock(&lock);
-	status = rb_get_rp(rbh, (void **)&padc, 10);
+	status = rb_get_rp(rbh, (void **)&padc, 0);
 //	pthread_mutex_unlock(&lock);
 
 	printf("rb_get_rp status in periodic event readout: %d, pevent: %p\n", status, pevent);
