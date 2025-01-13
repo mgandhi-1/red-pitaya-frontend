@@ -272,9 +272,8 @@ void* data_acquisition_thread(void* param)
 		//pthread_mutex_unlock(&lock);
 		 // Adjust data pointers after reading
         
-
         pevent->data_size = static_cast<DWORD>(bytes_read);
-		printf("Updated pevent data size: %u bytes\n", pevent->data_size);
+		//printf("Updated pevent data size: %u bytes\n", pevent->data_size);
 	
 		// Unlock mutex after writing to the buffer
 		//pthread_mutex_lock(&lock);
@@ -496,103 +495,96 @@ INT read_trigger_event(char *pevent, INT off)
 /*********************************************************************\
         Read a periodic event
 \*********************************************************************/
-//INT read_periodic_event(char *pevent, INT off)
-//{
-//	EVENT_HEADER *header = (EVENT_HEADER *)pevent;
-//    ssize_t *pdata = NULL, *padc = NULL;
-//	INT status;
+INT read_periodic_event(char *pevent, INT off)
+{
+	EVENT_HEADER *header = (EVENT_HEADER *)pevent;
+    int32_t *pdata = nullptr, *padc = nullptr;
+	INT status = 0;
 
-//	bk_init32a(pevent);
+	bk_init32a(pevent);
 
     // Create a bank with dummy data
- //   bk_create(pevent, "DATA", TID_INT32, (void **)&pdata);
+    bk_create(pevent, "DATA", TID_INT32, (void **)&pdata);
 
-//	if (pdata == NULL) {
-//        printf("Error: pdata is NULL after bk_create.\n");
- //       return FE_ERR_HW;
- //   }
+	if (pdata == nullptr) {
+        printf("Error: pdata is NULL after bk_create.\n");
+        return FE_ERR_HW;
+    }
 
 
 //	pthread_mutex_lock(&lock);
-//	status = rb_get_rp(rbh, (void **)&padc, 0);
+	status = rb_get_rp(rbh, (void **)&padc, 10);
 //	pthread_mutex_unlock(&lock);
 
-//	printf("rb_get_rp status: %d, pevent: %p\n", status, pevent);
+	printf("rb_get_rp status in periodic event readout: %d, pevent: %p\n", status, pevent);
 
 
-//	if (status == DB_SUCCESS && padc != NULL)  
-//	{
-//		printf("The status is: %d\n", status);
+	if (status == DB_SUCCESS && padc != nullptr)  
+	{
+		printf("The status is: %d\n", status);
 
 		// Ensure we don't exceed the buffer size
-  //      ssize_t num_samples = max_event_size / sizeof(ssize_t);
+        int32_t num_samples = max_event_size / sizeof(int32_t);
 
-    //    if (num_samples <= 0)
-    //    {
-    //    	printf("Error: num_samples is invalid: %ld\n", num_samples);
-    //        return FE_ERR_HW;
-    //    }
+        if (num_samples <= 0)
+        {
+        	printf("Error: num_samples is invalid in periodic event readout: %d\n", num_samples);
+            return FE_ERR_HW;
+        }
 		
 	//	printf("pevent pointer: %p\n", pevent);
 
         // Safely copy data to the event bank
-    //    memcpy(pdata, padc, num_samples * sizeof(ssize_t));  
-	//	bk_close(pevent, pdata); 
-	//	header->data_size = bk_size(pevent);
-	//	printf("event size: %d\n", bk_size(pevent));
+        memcpy(pdata, padc, num_samples * sizeof(int32_t));  
+		bk_close(pevent, pdata); 
+		header->data_size = bk_size(pevent);
+		printf("event size in periodic even readout: %d\n", bk_size(pevent));
 
 		//pthread_mutex_lock(&lock);
 		//rb_increment_rp(rbh, static_cast<int>(sizeof(EVENT_HEADER) + header->data_size)); 
 		//pthread_mutex_unlock(&lock);
-	//}
-	
-	//bk_close(pevent, pdata); 
-	//header->data_size = bk_size(pevent);
-	//printf("event size: %d\n", bk_size(pevent));
+	}
+	rb_increment_rp(rbh, static_cast<int>(sizeof(EVENT_HEADER) + header->data_size)); 
+	return bk_size(pevent);  
+}
 
-	//pthread_mutex_lock(&lock);
-	//rb_increment_rp(rbh, static_cast<int>(sizeof(EVENT_HEADER) + header->data_size)); 
-	//pthread_mutex_unlock(&lock);
-
-	//return bk_size(pevent);  
-//}
-INT read_periodic_event(char *pevent, INT off)
-{
-	printf("Starting the reading of periodic events here!\n");
+//INT read_periodic_event(char *pevent, INT off)
+//{
+//	printf("Starting the reading of periodic events here!\n");
     //EVENT_HEADER *header = (EVENT_HEADER *)pevent;
-    int32_t *pdata = nullptr, *padc = nullptr;
-    INT status;
+//    int32_t *pdata = nullptr, *padc = nullptr;
+//    INT status;
 
-    bk_init32a(pevent);
-	bk_create(pevent, "DATA", TID_INT32, (void **)&pdata);
+//    bk_init32a(pevent);
+//	bk_create(pevent, "DATA", TID_INT32, (void **)&pdata);
    
     //pthread_mutex_lock(&lock);
-    status = rb_get_rp(rbh, (void **)&padc, 0);
-	printf("status after rb_get_rp in read_periodic_event: %d\n", status);
+//    status = rb_get_rp(rbh, (void **)&padc, 0);
+//	printf("status after rb_get_rp in read_periodic_event: %d\n", status);
 	//pthread_mutex_unlock(&lock);
 
-	if (status != DB_SUCCESS && padc == nullptr) {
-        printf("Error: Failed to get read pointer or padc is NULL.\n");
-		return FE_ERR_HW;
-    }
+//	if (status != DB_SUCCESS && padc == nullptr) {
+//        printf("Error: Failed to get read pointer or padc is NULL.\n");
+//		return FE_ERR_HW;
+//    }
 
 	// Safely copy data
-    memcpy(pdata, padc, max_event_size);
+//    memcpy(pdata, padc, max_event_size);
 
-	int32_t alignedSize = (max_event_size + 7) & ~ 7;
+//	int32_t alignedSize = (max_event_size + 7) & ~ 7;
 
 	//if (alignedSize > dataSize) {
     //    memset((char *)pdata + dataSize, 0, alignedSize - dataSize);
    // }
 
-    bk_close(pevent, pdata); 
+//    bk_close(pevent, pdata); 
     //header->data_size = static_cast<DWORD>(alignedSize);
     //printf("Event size: %d\n", header->data_size);
 
     //pthread_mutex_lock(&lock);
-    rb_increment_rp(rbh, static_cast<int>(sizeof(EVENT_HEADER) + alignedSize)); 
+//    rb_increment_rp(rbh, static_cast<int>(sizeof(EVENT_HEADER) + alignedSize)); 
     //pthread_mutex_unlock(&lock);
 
-	printf("Exiting the reading of periodic events here!\n");
-    return bk_size(pevent);  
-}
+//	printf("Exiting the reading of periodic events here!\n");
+//    return bk_size(pevent);  
+//}
