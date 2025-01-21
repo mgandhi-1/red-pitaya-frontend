@@ -186,11 +186,11 @@ INT data_acquisition_thread(void* param)
 
 		// Acquire a write pointer in the ring buffer
 		do {
-			status = rb_get_wp(rbh, (void **)&pevent, 1000);
+			status = rb_get_wp(rbh, (void **)&pevent, 500);
 			printf("rb_get_wp status in data acquisition thread: %d, pevent: %p\n", status, (void *)pevent);
 			if (status == DB_TIMEOUT) 
 			{
-				usleep(100);
+				usleep(50);
 				if (!is_readout_thread_enabled()) break;
 			}
 		} while (status != DB_SUCCESS);
