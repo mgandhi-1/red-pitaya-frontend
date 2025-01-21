@@ -30,9 +30,6 @@
 
 int stream_sockfd = -1; 
 
-// Defining mutex
-//pthread_mutex_t lock;
-
 const char *frontend_name = "RP Streaming Frontend";
 const char *frontend_file_name = __FILE__;
 
@@ -61,7 +58,6 @@ INT rbh; // Ring buffer handle
 BOOL equipment_common_overwrite = false;
 
 INT data_acquisition_thread(void* param);
-//void* data_analysis_thread(void* param);
 
 extern HNDLE hDB;
 INT gbl_run_number;
@@ -119,7 +115,6 @@ INT frontend_init()
 
 	printf("Red Pitaya streaming connected successfully!\n");
 
-	//pthread_mutex_init(&lock, NULL);
 	INT status = rb_create(event_buffer_size, max_event_size, &rbh);
 
     if (status != DB_SUCCESS) {
@@ -131,10 +126,7 @@ INT frontend_init()
 
 	// Initialize data acquisition thread
 	ss_thread_create(data_acquisition_thread, (void*)(PTYPE)0);
-	//pthread_t acquisition_thread; //, analysis_thread;
-	//pthread_create(&acquisition_thread, NULL, data_acquisition_thread, NULL);
-	//pthread_create(&analysis_thread, NULL, data_analysis_thread, NULL);
-
+	
 	return SUCCESS;
 }
 
@@ -194,9 +186,7 @@ INT data_acquisition_thread(void* param)
 
 		// Acquire a write pointer in the ring buffer
 		do {
-			//pthread_mutex_lock(&lock);
 			status = rb_get_wp(rbh, (void **)&pevent, 1000);
-			//pthread_mutex_unlock(&lock);
 			printf("rb_get_wp status in data acquisition thread: %d, pevent: %p\n", status, (void *)pevent);
 			if (status == DB_TIMEOUT) 
 			{
@@ -205,7 +195,6 @@ INT data_acquisition_thread(void* param)
 			}
 		} while (status != DB_SUCCESS);
 
-		//bm_compose_event_threadsafe(pevent, 2,0,0, &equipment[1].serial_number);
 		pdata = (int32_t *)(pevent + 1);
 		printf("pdata : %p\n", (void *)pdata);
 
@@ -236,12 +225,11 @@ INT data_acquisition_thread(void* param)
 
 		int32_t num_samples = static_cast<int32_t>(bytes_read / sizeof(int32_t));
 		//printf("Number of Samples: %d\n", num_samples);
-		//pthread_mutex_lock(&lock);
+		
 		for (int32_t i = 1; i < num_samples; i++)
 		{
 			int32_t derivative = (buffer[i] - buffer[i-1]);
 			*pdata++ = derivative;
-			//printf("Derivative at sample %d: %d\n", i, derivative);
 		}
 
 		if (pdata == nullptr) 
@@ -250,9 +238,6 @@ INT data_acquisition_thread(void* param)
     		continue;
 		}
 		 // Adjust data pointers after reading
-        //pevent->data_size =  (pdata - (int32_t *)(pevent + 1)) * sizeof(int32_t);
-
-		//printf("Updated pevent data size: %u bytes\n", pevent->data_size);
 		rb_increment_wp(rbh, static_cast<int>(sizeof(EVENT_HEADER) + bytes_read)); 
 	}
 	
@@ -261,75 +246,6 @@ INT data_acquisition_thread(void* param)
 	printf("Exiting the data acquisition thread\n");
 	return 0;
 }
-
-
-/*******************************************************************\
-	Thread 2: Data Analysis
-\*******************************************************************/
-//void* data_analysis_thread(void* param)
-//{
-//	printf("Data analysis thread started\n");
-//	EVENT_HEADER *pevent;
-//	WORD *pdata;
-//	
-//	while(is_readout_thread_enabled())
-//	{
-//		// Poll the ring buffer for new events
-//		int status;
-//		do{
-//			pthread_mutex_lock(&lock);
-//
-//			status = rb_get_rp(rbh, (void **) &pevent, 0);
-//			//printf("Ring buffer status: %d\n", status);
-//			pthread_mutex_unlock(&lock);
-//
-//			if (status == DB_TIMEOUT)
-//			{
-//				usleep(50);
-//				if (!is_readout_thread_enabled()) break;
-//			}
-//		} while (status != DB_SUCCESS);
-//
-//		if (status != DB_SUCCESS) 
-//		{
-//			printf("Error accessing the ring buffer: %d\n", status);
-//			//pthread_mutex_unlock(&lock);
-//			continue;
-//		}
-
-//		if (pevent == nullptr) 
-//        {
-//            printf("Error: pevent is null\n");
-            //pthread_mutex_unlock(&lock);
-//            continue;
-//        }
-        
-//        if (pevent->data_size <= 0)
-//        {
-//            printf("Error: data_size is not valid: %d\n", pevent->data_size);
-//            //pthread_mutex_unlock(&lock);
-//            continue;
-//        }
-
-//		pdata = (WORD *)(pevent + 1);
-
-        // Perform data analysis here (e.g., calculating derivatives)
-//        int num_samples = pevent->data_size / sizeof(WORD);
-//        for (int i = 1; i < num_samples; i++)
-//        {
-//            int derivative = pdata[i] - pdata[i - 1];
-//            printf("Derivative at sample %d: %d\n", i, derivative);
-//        }
-
-//		pthread_mutex_lock(&lock);
-		// Mark the event as processed
-//		rb_increment_rp(rbh, sizeof(EVENT_HEADER) + pevent->data_size);
-//		pthread_mutex_unlock(&lock);	
-
-//	}
-//	printf("Exiting the data analysis thread\n");
-//	return NULL;
-//}
 
 /********************************************************************\
 	Begin of Run
@@ -435,91 +351,48 @@ INT interrupt_configure(INT cmd, INT source, PTYPE adr)
 INT read_trigger_event(char *pevent, INT off)
 {
 	printf("Entering Trigger event\n");
-	EVENT_HEADER *header = (EVENT_HEADER *)pevent;
-	int32_t *pdata = nullptr;
-	INT status = 0;
-	
-	bk_init32a(pevent);
-	
-	bk_create(pevent, "TPDA", TID_INT32, (void **)&pdata);
-	//pthread_mutex_lock(&lock);
+	int32_t *pdata;
+	int32_t *padc;
+	int a;
+	int bufLevel;
 
-	EVENT_HEADER *ring_event = nullptr;
-	//pthread_mutex_lock(&lock);
-	status = rb_get_rp(rbh, (void **)&pevent, 500);
-	printf("rb_get_rp status in trigger event: %d, pevent: %p\n", status, pevent);
-	//pthread_mutex_unlock(&lock);
+	rb_get_buffer_level(rbh, &bufLevel);
 
-	if (status == DB_SUCCESS && ring_event != nullptr)
+	INT status = rb_get_rp(rbh, (void **)&padc, 500);
+
+	if (status != DB_SUCCESS) 
 	{
-		int32_t *ring_data = (int32_t *)(ring_event + 1);
-		int32_t num_words = static_cast<int32_t>(ring_event->data_size / sizeof(int32_t));
+    	printf("Error: rb_get_rp failed with status %d\n", status);
+        return 0; // Exit if no data is available
+    }
 
-		for (int32_t i = 0; i < num_words; i++)
-		{
-			pdata[i] = ring_data[i];
-		}
+	printf("Status in trigger event readout: %d\n", status);
+	
+	int num_samples = bufLevel / sizeof(int32_t);
+	printf("Number of samples available : %d\n", num_samples);
 
-		bk_close(pevent, pdata);
-		header->data_size = bk_size(pevent);
+	
+	bk_init32(pevent);
+	bk_create(pevent, "TADC", TID_INT32, (void **)&pdata);
 
-		//pthread_mutex_lock(&lock);
-		rb_increment_rp(rbh, static_cast<int>(sizeof(EVENT_HEADER) + header->data_size));
-		//pthread_mutex_unlock(&lock);
+	for (a=0; a < 100; a++)
+	{
+		*pdata++ = padc[a];
 	}
+
+	bk_close(pevent, pdata);
+
+	rb_increment_rp(rbh, static_cast<int>(sizeof(EVENT_HEADER) + 100 * sizeof(int32_t)));
 	printf("Exiting Trigger event\n");
-	return bk_size(pevent); 
+	return bk_size(pevent);
 }
 
 /*********************************************************************\
         Read a periodic event
 \*********************************************************************/
-//INT read_periodic_event(char *pevent, INT off)
-//{
-//	printf("Entering Periodic event\n");
-//	EVENT_HEADER *header = (EVENT_HEADER *)pevent;
-//    int32_t *pdata = nullptr;
-//	INT status = 0;
-
-//	pthread_mutex_lock(&lock);
-//	status = rb_get_rp(rbh, (void **)&pevent, 0);
-//	pthread_mutex_unlock(&lock);
-//	printf("rb_get_rp status in periodic event readout: %d, pevent: %p\n", status, pevent);
-//	pdata = (int32_t *)(pevent + 1);
-
-//	bk_init32a(pevent);
-    // Create a bank with dummy data
-//    bk_create(pevent, "DATA", TID_INT32, (void **)&pdata);
-
-//	if (status == DB_SUCCESS && pevent != nullptr)  
-//	{
-		//printf("The status is: %d\n", status);
-
-		// Ensure we don't exceed the buffer size
-  //      int32_t num_samples = max_event_size / sizeof(int32_t);
-
-  //      if (num_samples <= 0)
-   //     {
-     //   	printf("Error: num_samples is invalid in periodic event readout: %d\n", num_samples);
-       //     return FE_ERR_HW;
-        //}
-		
-	//	printf("pdata: %p, num_samples: %d\n", pdata, num_samples);
-		
-        // Safely copy data to the event bank
-    //    memcpy(pdata, (int32_t *)(pevent + sizeof(EVENT_HEADER)), num_samples * sizeof(int32_t));  
-	//	bk_close(pevent, pdata); 
-	//	header->data_size = bk_size(pevent);
-	//	printf("event size in periodic event readout: %d\n", bk_size(pevent));
-	//	rb_increment_rp(rbh, sizeof(EVENT_HEADER) + header->data_size); 
-		
-//	}
-//	printf("Exiting periodic event\n");
-//	return bk_size(pevent);  
-//}
-
 INT read_periodic_event(char *pevent, INT off)
 {
+	printf("Entering Periodic event\n");
 	int32_t *pdata;
 	int32_t *padc;
 	int a;
@@ -551,6 +424,7 @@ INT read_periodic_event(char *pevent, INT off)
 
 	bk_close(pevent, pdata);
 
-	rb_increment_rp(rbh, static_cast<int>(sizeof(EVENT_HEADER) + num_samples * sizeof(int32_t)));
+	rb_increment_rp(rbh, static_cast<int>(sizeof(EVENT_HEADER) + 100 * sizeof(int32_t)));
+	printf("Exiting Periodic event\n");
 	return bk_size(pevent);
 }
