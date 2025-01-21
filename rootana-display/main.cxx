@@ -86,7 +86,7 @@ public:
         AddSingleCanvas(redPitayaCanvas);
 
         // Number of events to skip before updating plots
-        SetNumberSkipEvent(40);
+        SetNumberSkipEvent(2);
     }
 
     void BeginRun(int transition, int run, int time) override {
