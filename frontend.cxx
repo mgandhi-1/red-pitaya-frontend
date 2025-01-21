@@ -313,17 +313,18 @@ INT poll_event(INT source, INT count, BOOL test)
 		rb_get_buffer_level(rbh, &bufferLevel);
 		//printf("Buffer Level %d\n", bufferLevel);
 	}
-	//DWORD flag;
+	
+	DWORD flag;
 	//printf("Entering trigger event!\n");
-	//for (i = 0; i < count; i++)
-	//{
-		//flag = TRUE;
-		//cm_yield(100);
+	for (i = 0; i < count; i++)
+	{
+		flag = TRUE;
+		cm_yield(100);
 		// Poll the stream for data availability
-		//if (flag)
-			//if (!test) 
-			///	return TRUE; // New event detected
-	//}
+		if (flag)
+			if (!test) 
+				return TRUE; // New event detected
+	}
 
 	return 0;
 }
