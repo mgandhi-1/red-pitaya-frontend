@@ -3,8 +3,8 @@
 
 TRedPitayaCanvas::TRedPitayaCanvas() : TCanvasHandleBase("Red Pitaya Data")
 {
-	derivativeHist = new TH1F("DerivateHist", "Data for Channel 0", 5000, 0 ,10);
-	derivativeHist->GetYaxis()->SetRangeUser(-1500, 1500); 
+	derivativeHist = new TH1F("DerivateHist", "Data for Channel 0", 1000, 0 ,25);
+	derivativeHist->GetYaxis()->SetRangeUser(-100000, 100000); 
 }
 
 void TRedPitayaCanvas::SetUpCompositeFrame(TGCompositeFrame *compFrame, TRootanaDisplay *display)
@@ -60,8 +60,8 @@ void TRedPitayaCanvas::UpdateCanvasHistograms(TDataContainer& dataContainer)
 		int numSamples = data->GetNumSamples();
 		for (int i = 0; i < numSamples; i++)
 		{
-			int sample = data->GetSample(i) / 1000000;
-			printf("sample: %d\n", sample);
+			int sample = data->GetSample(i)/10;
+			//printf("sample: %d\n", sample);
 			derivativeHist-> Fill(i, sample);
 		}
 	}
