@@ -91,7 +91,7 @@ public:
 
     void BeginRun(int transition, int run, int time) override {
         std::cout << "Starting run: " << run << std::endl;
-        ResetCanvasHistograms();
+        //ResetCanvasHistograms();
     }
 
     void EndRun(int transition, int run, int time) override {
