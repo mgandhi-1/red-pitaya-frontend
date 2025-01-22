@@ -24,10 +24,6 @@ void TRedPitayaCanvas::SetUpCompositeFrame(TGCompositeFrame *compFrame, TRootana
 	compFrame->AddFrame(frame, new TGLayoutHints(kLHintsCenterX,2,2,2,2));
 }
 
-void TRedPitayaCanvas::ResetCanvasHistograms()
-{
-	derivativeHist->Reset();
-}
 
 void TRedPitayaCanvas::UpdateCanvasHistograms(TDataContainer& dataContainer)
 {
@@ -60,7 +56,7 @@ void TRedPitayaCanvas::UpdateCanvasHistograms(TDataContainer& dataContainer)
 		int numSamples = data->GetNumSamples();
 		for (int i = 0; i < numSamples; i++)
 		{
-			int sample = data->GetSample(i)/10;
+			int sample = data->GetSample(i)/1000;
 			//printf("sample: %d\n", sample);
 			derivativeHist-> Fill(i, sample);
 		}
@@ -77,4 +73,9 @@ void TRedPitayaCanvas::PlotCanvas(TDataContainer& dataContainer, TRootEmbeddedCa
 
 	canvas->Modified();
 	canvas->Update();
+}
+
+void TRedPitayaCanvas::ResetCanvasHistograms()
+{
+//	derivativeHist->Reset();
 }
