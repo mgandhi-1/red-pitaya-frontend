@@ -19,7 +19,7 @@ public:
 	: TGenericData(bankLen, bankType, bankName, ptr)
 	{
 		data = static_cast<int*>(ptr);
-		num_samples = bankLen / sizeof(int);
+		num_samples = bankLen;
 	}
 
 	int GetSample(size_t index) const {
