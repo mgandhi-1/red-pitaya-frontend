@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Directory containing .json files
-JSON_DIR="/home/snolab/online"  # Updated path from your terminal
+JSON_DIR="/home/snolab/red-pitaya-frontend/analysis"  # Updated path from your terminal
 
 # Output directory for extracted data
 OUTPUT_DIR="./extracted_data"
