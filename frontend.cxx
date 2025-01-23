@@ -314,17 +314,17 @@ INT poll_event(INT source, INT count, BOOL test)
 		//printf("Buffer Level %d\n", bufferLevel);
 	}
 	
-	//DWORD flag;
+	DWORD flag;
 	//printf("Entering trigger event!\n");
-	//for (i = 0; i < count; i++)
-	//{
-		//flag = TRUE;
-		//cm_yield(100);
+	for (i = 0; i < count; i++)
+	{
+		flag = TRUE;
+		cm_yield(100);
 		// Poll the stream for data availability
-		//if (flag)
-			//if (!test) 
-				//return TRUE; // New event detected
-	//}
+		if (flag)
+			if (!test) 
+				return TRUE; // New event detected
+	}
 
 	return 0;
 }
@@ -378,7 +378,11 @@ INT read_trigger_event(char *pevent, INT off)
 
 	for (a=0; a < 100; a++)
 	{
-		*pdata++ = padc[a];
+		if (padc[a] > 2500000 || padc[a] < -2500000)
+		{
+			*pdata++ = padc[a];
+		}
+		
 	}
 
 	bk_close(pevent, pdata);
