@@ -29,7 +29,7 @@ void TRedPitayaCanvas::UpdateCanvasHistograms(TDataContainer& dataContainer)
 {
 	std::cout << "Available Banks: " << dataContainer.GetMidasEvent().GetBankList() << std::endl;
 
-	std::cout << "Address of DATA bank: " << dataContainer.GetEventData<MyData>("DATA") << std::endl;
+	std::cout << "Address of TADC bank: " << dataContainer.GetEventData<MyData>("TADC") << std::endl;
 
 	//void *ptr = nullptr;
 	//int size = dataContainer.GetMidasData().LocateBank(NULL, "DATA", &ptr);
@@ -42,10 +42,10 @@ void TRedPitayaCanvas::UpdateCanvasHistograms(TDataContainer& dataContainer)
 	//}
 
 	
-	MyData* data = dataContainer.GetEventData<MyData>("DATA");
+	MyData* data = dataContainer.GetEventData<MyData>("TADC");
 	if (!data) 
 	{
-  	  	std::cerr << "Error: Failed to retrieve DATA bank!" << std::endl;
+  	  	std::cerr << "Error: Failed to retrieve TADC bank!" << std::endl;
     	return ;
 	}
 
