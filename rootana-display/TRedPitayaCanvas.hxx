@@ -43,7 +43,7 @@ public :
 	TRedPitayaCanvas();
 
 	// Reset the histograms for this canvas
-	void ResetCanvasHistograms() override;
+	void ResetCanvasHistograms();
 
 	// Update the histograms for this canvas
 	void UpdateCanvasHistograms(TDataContainer& dataContainer);

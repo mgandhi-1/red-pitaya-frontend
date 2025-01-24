@@ -29,7 +29,7 @@ void TRedPitayaCanvas::UpdateCanvasHistograms(TDataContainer& dataContainer)
 {
 	std::cout << "Available Banks: " << dataContainer.GetMidasEvent().GetBankList() << std::endl;
 
-	std::cout << "Address of TADC bank: " << dataContainer.GetEventData<MyData>("TADC") << std::endl;
+	std::cout << "Address of bank: " << dataContainer.GetEventData<MyData>("DATA") << std::endl;
 
 	//void *ptr = nullptr;
 	//int size = dataContainer.GetMidasData().LocateBank(NULL, "DATA", &ptr);
@@ -42,10 +42,10 @@ void TRedPitayaCanvas::UpdateCanvasHistograms(TDataContainer& dataContainer)
 	//}
 
 	
-	MyData* data = dataContainer.GetEventData<MyData>("TADC");
+	MyData* data = dataContainer.GetEventData<MyData>("DATA");
 	if (!data) 
 	{
-  	  	std::cerr << "Error: Failed to retrieve TADC bank!" << std::endl;
+  	  	std::cerr << "Error: Failed to retrieve DATA bank!" << std::endl;
     	return ;
 	}
 
@@ -77,5 +77,5 @@ void TRedPitayaCanvas::PlotCanvas(TDataContainer& dataContainer, TRootEmbeddedCa
 
 void TRedPitayaCanvas::ResetCanvasHistograms()
 {
-//	derivativeHist->Reset();
+	derivativeHist->Reset();
 }
