@@ -207,7 +207,7 @@ INT data_acquisition_thread(void* param)
 			{
 				printf("Red Pitaya disconnected\n");
 				break;
-
+	
 			} else if (errno == EWOULDBLOCK || errno ==EAGAIN)
 			{
 				printf("Receive timeout\n");			
