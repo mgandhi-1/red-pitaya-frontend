@@ -64,7 +64,7 @@ INT gbl_run_number;
 
 EQUIPMENT equipment[] = {
 	{"Trigger", 
-		{1, 0, "SYSTEM", EQ_POLLED, 0, "MIDAS", TRUE,
+		{1, 0, "SYSTEM", EQ_MULTITHREAD, 0, "MIDAS", TRUE,
 			RO_RUNNING|RO_ODB, 100, 0, 0, 0, "", "", "","","",0,0},
 		read_trigger_event,
 	},
