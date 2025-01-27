@@ -12,8 +12,8 @@ def extract_and_convert_entries(data):
     if "DATA" in data:
         adc_values = data["DATA"][0:100]  # Extract first 100 entries from the array
         # Convert ADC values to voltage
-       # voltage_values = [(2 * x) / 16384 for x in adc_values]
-        return adc_values
+        voltage_values = [(2 * x) / 16384 for x in adc_values]
+        return voltage_values
     else:
         raise KeyError("Key 'DATA' not found in the JSON file.")
 
