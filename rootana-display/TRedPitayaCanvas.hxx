@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-#include "TH1F.h"
+#include "TGraph.h"
 #include "TCanvasHandleBase.hxx"
 #include "TGenericData.hxx"
 #include "TGNumberEntry.h"
@@ -43,7 +43,7 @@ public :
 	TRedPitayaCanvas();
 
 	// Reset the histograms for this canvas
-	void ResetCanvasHistograms();
+	void ResetCanvasHistograms() override;
 
 	// Update the histograms for this canvas
 	void UpdateCanvasHistograms(TDataContainer& dataContainer);
@@ -56,11 +56,15 @@ public :
 
 	void BeginRun(int transition, int run, int time) override {
 		std::cout << "BOR: Red Pitaya Data - Begin Run " << run << std::endl;
+		eventIndex = 0;
+		xOrigin = 0;
 	}
 
 private: 
-	TH1F *derivativeHist;
+	TGraph *derivativeHist;
 	TGNumberEntry *fChannelSelector;
+	int eventIndex = 0; // Tracks total events
+	int xOrigin = 0; // Tracks X-axis origin
 };
 
 #endif
