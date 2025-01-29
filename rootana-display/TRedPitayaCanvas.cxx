@@ -1,10 +1,14 @@
 #include "TRedPitayaCanvas.hxx"
 #include "TGLabel.h"
+#include "TAxis.h"
 
 TRedPitayaCanvas::TRedPitayaCanvas() : TCanvasHandleBase("Red Pitaya Data")
 {
-	derivativeHist = new TH1F("DerivateHist", "Data for Channel 0", 1000, 0 ,25);
-	derivativeHist->GetYaxis()->SetRangeUser(-100000, 100000); 
+	//derivativeHist = new TH1F("DerivateHist", "Data for Channel 0", 1000, 0 ,25);
+	derivativeHist = new TGraph();
+	derivativeHist->SetTitle("Red Pitaya Data; Event Index; Value");
+	derivativeHist->SetMarkerStyle(20);
+	derivativeHist->SetMarkerColor(kBlue);
 }
 
 void TRedPitayaCanvas::SetUpCompositeFrame(TGCompositeFrame *compFrame, TRootanaDisplay *display)
@@ -56,9 +60,18 @@ void TRedPitayaCanvas::UpdateCanvasHistograms(TDataContainer& dataContainer)
 		int numSamples = data->GetNumSamples();
 		for (int i = 0; i < numSamples; i++)
 		{
-			int sample = data->GetSample(i)/1000;
-			printf("sample: %d\n", sample);
-			derivativeHist-> Fill(i, sample);
+			int sample = data->GetSample(i)/10000;
+			//printf("sample: %d\n", sample);
+			int xIndex = eventIndex - xOrigin;
+			derivativeHist-> SetPoint(xIndex, xIndex, sample);
+			eventIndex++;
+
+			// Reset the graph every x events
+			if (eventIndex % 500 == 0)
+			{
+				xOrigin = eventIndex;
+				derivativeHist->Set(0);
+			}
 		}
 	}
 }
@@ -68,8 +81,8 @@ void TRedPitayaCanvas::PlotCanvas(TDataContainer& dataContainer, TRootEmbeddedCa
 	TCanvas *canvas = embedCanvas->GetCanvas();
 	canvas->Clear();
 	//int selectedChannel = fChannelSelector->GetNumberEntry()->GetIntNumber();
-	
-	derivativeHist-> Draw();
+	derivativeHist->GetYaxis()->SetRangeUser(-950, 950); 
+	derivativeHist-> Draw("AL");
 
 	canvas->Modified();
 	canvas->Update();
@@ -77,5 +90,7 @@ void TRedPitayaCanvas::PlotCanvas(TDataContainer& dataContainer, TRootEmbeddedCa
 
 void TRedPitayaCanvas::ResetCanvasHistograms()
 {
-	derivativeHist->Reset();
+	derivativeHist->Set(0); // Clear all data points in the graph
+	eventIndex = 0;
+	xOrigin = 0;
 }
