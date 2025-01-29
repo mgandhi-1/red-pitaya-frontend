@@ -6,63 +6,6 @@
 #include "TRedPitayaCanvas.hxx"
 #include "THttpServer.h"
 
-
-//class MyRealTimePlot : public TRootanaDisplay {
-
-  //  TRedPitayaCanvas *hist;
-
-//public:
-  //  MyRealTimePlot() {
-
-//		DisableRootOutput(true); // Disable default ROOT output files
-
-    //    hist = new TH1F("hist", "Data from Red Pitaya", 10000, 0, 1500);
-  //  }
-
-//	void AddAllCanvases()
-//	{
-		// Set up tabbed canvases
-//		AddSingleCanvas("DATA");
-		
-		// Choose how many events to skip before updating
-//		SetNumberSkipEvent(15);
-
-		// Choose Display name
-//		SetDisplayName("Red Pitaya Data Stream");
-	
-//	};
-
-//	virtual ~MyRealTimePlot() {};
-
-//	void ResetHistograms() 
-//	{
-//		hist->Reset();
-//	}
-
-//	void UpdateHistograms(TDataContainer& dataContainer)
-//	{
-//		void *ptr;
-		// Update histograms
-//		int size = dataContainer.GetMidasData().LocateBank(NULL, "DATA", &ptr);
-//		hist->Fill(size);
-//	}
-
-//	void PlotCanvas(TDataContainer& dataContainer)
-//	{
-//		if(GetDisplayWindow()->GetCurrentTabName().compare("DATA") == 0)
-//		{
-//			TCanvas* c1 = GetDisplayWindow()->GetCanvas("DATA");
-//			c1->Clear();
-//			hist->Draw();
-//			c1->Modified();
-//			c1->Update();
-//		}
-//	}
-
-
-//	void QuitButtonAction();
-//};
-
 // Main class for Red Pitaya Real-Time Data Display
 class MyRealTimePlot : public TRootanaDisplay {
 
@@ -86,7 +29,7 @@ public:
         AddSingleCanvas(redPitayaCanvas);
 
         // Number of events to skip before updating plots
-        SetNumberSkipEvent(2);
+        SetNumberSkipEvent(5);
     }
 
     void BeginRun(int transition, int run, int time) override {
@@ -102,10 +45,10 @@ public:
         if (redPitayaCanvas) delete redPitayaCanvas;
     }
 
-    void ResetCanvasHistograms() 
-    {
-        redPitayaCanvas->ResetCanvasHistograms();
-    }
+    //void ResetCanvasHistograms() 
+    //{
+    //    redPitayaCanvas->ResetCanvasHistograms();
+    //}
 };
 
 int main(int argc, char *argv[]) {
