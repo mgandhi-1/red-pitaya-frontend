@@ -229,7 +229,10 @@ INT data_acquisition_thread(void* param)
 		for (int32_t i = 1; i < num_samples; i++)
 		{
 			//int32_t derivative = (buffer[i] - buffer[i-1]);
-			*pdata++ = buffer[i]; //derivative;
+			if (buffer[i] >= -9999999 || buffer[i] <= 9999999)
+			{
+				*pdata++ = buffer[i]; //derivative;
+			}
 		}
 
 		if (pdata == nullptr) 
