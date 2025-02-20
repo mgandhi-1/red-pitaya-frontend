@@ -64,7 +64,7 @@ INT gbl_run_number;
 
 EQUIPMENT equipment[] = {
 	{"Trigger", 
-		{1, 0, "SYSTEM", EQ_POLLED, 0, "MIDAS", TRUE,
+		{1, 0, "SYSTEM", EQ_MULTITHREAD, 0, "MIDAS", TRUE,
 			RO_RUNNING|RO_ODB, 100, 0, 0, 0, "", "", "","","",0,0},
 		read_trigger_event,
 	},
@@ -86,7 +86,7 @@ EQUIPMENT equipment[] = {
 
 INT frontend_init()
 {
-	printf("Initializing frontend and Red Pitaya streaming connection ... \n");
+	//printf("Initializing frontend and Red Pitaya streaming connection ... \n");
 
 	// Create a socket for TCP streaming
 	struct sockaddr_in servaddr;
@@ -113,7 +113,7 @@ INT frontend_init()
 		return FE_ERR_HW;
 	}
 
-	printf("Red Pitaya streaming connected successfully!\n");
+	//printf("Red Pitaya streaming connected successfully!\n");
 
 	INT status = rb_create(event_buffer_size, max_event_size, &rbh);
 
@@ -122,7 +122,7 @@ INT frontend_init()
         return FE_ERR_HW;
 	}
 
-	printf("Ring buffer created with handle: %d\n", rbh);
+	//printf("Ring buffer created with handle: %d\n", rbh);
 
 	// Initialize data acquisition thread
 	ss_thread_create(data_acquisition_thread, (void*)(PTYPE)0);
@@ -152,7 +152,7 @@ INT frontend_exit()
 \*******************************************************************/
 INT data_acquisition_thread(void* param)
 {
-	printf("Data acquisition thread started\n");
+	//printf("Data acquisition thread started\n");
 	
 	EVENT_HEADER *pevent = nullptr;
 	int32_t *pdata = nullptr; 
@@ -174,7 +174,7 @@ INT data_acquisition_thread(void* param)
 
 		if (!readout_enabled())
 		{
-			usleep(50); // do not produce events when run is stopped
+			usleep(20); // do not produce events when run is stopped
 			continue;
 		}
 
@@ -186,20 +186,20 @@ INT data_acquisition_thread(void* param)
 
 		// Acquire a write pointer in the ring buffer
 		do {
-			status = rb_get_wp(rbh, (void **)&pevent, 1000);
-			printf("rb_get_wp status in data acquisition thread: %d, pevent: %p\n", status, (void *)pevent);
+			status = rb_get_wp(rbh, (void **)&pevent, 500);
+			//printf("rb_get_wp status in data acquisition thread: %d, pevent: %p\n", status, (void *)pevent);
 			if (status == DB_TIMEOUT) 
 			{
-				usleep(100);
+				usleep(20);
 				if (!is_readout_thread_enabled()) break;
 			}
 		} while (status != DB_SUCCESS);
 
 		pdata = (int32_t *)(pevent + 1);
-		printf("pdata : %p\n", (void *)pdata);
+		//printf("pdata : %p\n", (void *)pdata);
 
 		bytes_read = recv(stream_sockfd, buffer, sizeof(buffer), 0);
-		printf("Data received: %ld bytes\n", bytes_read);
+		//printf("Data received: %ld bytes\n", bytes_read);
 
 		if (bytes_read <= 0)
 		{
@@ -207,7 +207,7 @@ INT data_acquisition_thread(void* param)
 			{
 				printf("Red Pitaya disconnected\n");
 				break;
-
+	
 			} else if (errno == EWOULDBLOCK || errno ==EAGAIN)
 			{
 				printf("Receive timeout\n");			
@@ -228,8 +228,11 @@ INT data_acquisition_thread(void* param)
 		
 		for (int32_t i = 1; i < num_samples; i++)
 		{
-			int32_t derivative = (buffer[i] - buffer[i-1]);
-			*pdata++ = derivative;
+			//int32_t derivative = (buffer[i] - buffer[i-1]);
+			if (buffer[i] >= -9999999 || buffer[i] <= 9999999)
+			{
+				*pdata++ = buffer[i]; //derivative;
+			}
 		}
 
 		if (pdata == nullptr) 
@@ -243,7 +246,7 @@ INT data_acquisition_thread(void* param)
 	
 	/* tell framework that we are finished */
 	signal_readout_thread_active(0, FALSE);
-	printf("Exiting the data acquisition thread\n");
+	//printf("Exiting the data acquisition thread\n");
 	return 0;
 }
 
@@ -295,7 +298,7 @@ INT frontend_loop()
 		return frontend_init(); // Reinitialize the connection
 	}
 	
-	usleep(25); // Prevent CPU overload, adjust as needed
+	usleep(10); // Prevent CPU overload, adjust as needed
 	return SUCCESS;
 }
 
@@ -314,17 +317,17 @@ INT poll_event(INT source, INT count, BOOL test)
 		//printf("Buffer Level %d\n", bufferLevel);
 	}
 	
-	DWORD flag;
+	//DWORD flag;
 	//printf("Entering trigger event!\n");
-	for (i = 0; i < count; i++)
-	{
-		flag = TRUE;
-		cm_yield(100);
+	//for (i = 0; i < count; i++)
+	//{
+		//flag = TRUE;
+		//cm_yield(100);
 		// Poll the stream for data availability
-		if (flag)
-			if (!test) 
-				return TRUE; // New event detected
-	}
+		//if (flag)
+			//if (!test) 
+				//return TRUE; // New event detected
+	//}
 
 	return 0;
 }
@@ -351,7 +354,7 @@ INT interrupt_configure(INT cmd, INT source, PTYPE adr)
 
 INT read_trigger_event(char *pevent, INT off)
 {
-	printf("Entering Trigger event\n");
+	//printf("Entering Trigger event\n");
 	int32_t *pdata;
 	int32_t *padc;
 	int a;
@@ -363,14 +366,14 @@ INT read_trigger_event(char *pevent, INT off)
 
 	if (status != DB_SUCCESS) 
 	{
-    	printf("Error: rb_get_rp failed with status %d\n", status);
+    	//printf("Error: rb_get_rp failed with status %d\n", status);
         return 0; // Exit if no data is available
     }
 
-	printf("Status in trigger event readout: %d\n", status);
+	//printf("Status in trigger event readout: %d\n", status);
 	
-	int num_samples = bufLevel / sizeof(int32_t);
-	printf("Number of samples available : %d\n", num_samples);
+	//int num_samples = bufLevel / sizeof(int32_t);
+	//printf("Number of samples available : %d\n", num_samples);
 
 	
 	bk_init32(pevent);
@@ -378,13 +381,17 @@ INT read_trigger_event(char *pevent, INT off)
 
 	for (a=0; a < 100; a++)
 	{
-		*pdata++ = padc[a];
+		if (padc[a] > 2500000 || padc[a] < -2500000)
+		{
+			*pdata++ = padc[a];
+		}
+		
 	}
 
 	bk_close(pevent, pdata);
 
 	rb_increment_rp(rbh, static_cast<int>(sizeof(EVENT_HEADER) + 100 * sizeof(int32_t)));
-	printf("Exiting Trigger event\n");
+	//printf("Exiting Trigger event\n");
 	return bk_size(pevent);
 }
 
@@ -393,7 +400,7 @@ INT read_trigger_event(char *pevent, INT off)
 \*********************************************************************/
 INT read_periodic_event(char *pevent, INT off)
 {
-	printf("Entering Periodic event\n");
+	//printf("Entering Periodic event\n");
 	int32_t *pdata;
 	int32_t *padc;
 	int a;
@@ -405,14 +412,14 @@ INT read_periodic_event(char *pevent, INT off)
 
 	if (status != DB_SUCCESS) 
 	{
-    	printf("Error: rb_get_rp failed with status %d\n", status);
+    	//printf("Error: rb_get_rp failed with status %d\n", status);
         return 0; // Exit if no data is available
     }
 
-	printf("Status in periodic event readout: %d\n", status);
+	//printf("Status in periodic event readout: %d\n", status);
 	
-	int num_samples = bufLevel / sizeof(int32_t);
-	printf("Number of samples available : %d\n", num_samples);
+	//int num_samples = bufLevel / sizeof(int32_t);
+	//printf("Number of samples available : %d\n", num_samples);
 
 	
 	bk_init32(pevent);
@@ -426,6 +433,6 @@ INT read_periodic_event(char *pevent, INT off)
 	bk_close(pevent, pdata);
 
 	rb_increment_rp(rbh, static_cast<int>(sizeof(EVENT_HEADER) + 100 * sizeof(int32_t)));
-	printf("Exiting Periodic event\n");
+	//printf("Exiting Periodic event\n");
 	return bk_size(pevent);
 }
