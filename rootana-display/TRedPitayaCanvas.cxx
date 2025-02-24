@@ -81,7 +81,7 @@ void TRedPitayaCanvas::PlotCanvas(TDataContainer& dataContainer, TRootEmbeddedCa
 	TCanvas *canvas = embedCanvas->GetCanvas();
 	canvas->Clear();
 	//int selectedChannel = fChannelSelector->GetNumberEntry()->GetIntNumber();
-	derivativeHist->GetYaxis()->SetRangeUser(-5, 5); 
+	derivativeHist->GetYaxis()->SetRangeUser(-10, 10); 
 	derivativeHist-> Draw("AL");
 
 	canvas->Modified();
