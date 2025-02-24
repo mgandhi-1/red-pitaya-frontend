@@ -60,7 +60,7 @@ void TRedPitayaCanvas::UpdateCanvasHistograms(TDataContainer& dataContainer)
 		int numSamples = data->GetNumSamples();
 		for (int i = 0; i < numSamples; i++)
 		{
-			int sample = data->GetSample(i)/20000000000;
+			int sample = data->GetSample(i)/2000000000;
 			printf("sample: %d\n", sample);
 			int xIndex = eventIndex - xOrigin;
 			derivativeHist-> SetPoint(xIndex, xIndex, sample);
