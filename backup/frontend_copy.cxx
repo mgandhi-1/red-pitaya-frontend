@@ -1,3 +1,9 @@
+/**
+ * This frontend interfaces with a Red Pitaya board to acquire
+ * high-frequency data via TCP streaming. 
+ */
+
+
 #undef NDEBUG
 
 #include <stdio.h>
@@ -28,19 +34,17 @@
 
 #define REDPITAYA_PORT 8900 //Enter port number here
 
-int stream_sockfd = -1; 
+int stream_sockfd = -1; // TCP Socket
 
+// MIDAS Frontend configuration
 const char *frontend_name = "RP Streaming Frontend";
 const char *frontend_file_name = __FILE__;
 
 BOOL frontend_call_loop = false;
-
-INT display_period = 0; // update this later
-
-INT max_event_size = 10000; // update later
+INT display_period = 0; // update this if needed
+INT max_event_size = 10000; // update if needed
 INT max_event_size_frag = 0;
-
-INT event_buffer_size = 100*10000; //update later
+INT event_buffer_size = 100*10000; //update later if needed
 
 // Forward Declarations
 INT frontend_init();
@@ -53,25 +57,46 @@ INT end_of_run(INT run_number, char *error);
 INT pause_run(INT run_number, char *error);
 INT resume_run(INT run_number, char *error);
 INT frontend_loop();
+INT data_acquisition_thread(void* param); // Data thread
+
+// Global Variables
 INT rbh; // Ring buffer handle
-
 BOOL equipment_common_overwrite = false;
-
-INT data_acquisition_thread(void* param);
-
-extern HNDLE hDB;
+extern HNDLE hDB; 
 INT gbl_run_number;
 
 EQUIPMENT equipment[] = {
-	{"Trigger", 
-		{1, 0, "SYSTEM", EQ_MULTITHREAD, 0, "MIDAS", TRUE,
-			RO_RUNNING|RO_ODB, 100, 0, 0, 0, "", "", "","","",0,0},
-		read_trigger_event,
+	{"Trigger", 				// Equipment name 
+		{1,     				// event ID
+		 0,						// trigger mask
+		"SYSTEM",				// event buffer
+		EQ_MULTITHREAD, 		// equipment type
+		0, 						// event source crate
+		"MIDAS",             	// format
+		TRUE,					// enabled
+		RO_RUNNING|RO_ODB,		// read when running and update ODB
+		 100, 					// poll for 100ms
+		  0,  					// stop run after this event
+		  0,					// number of sub events
+		  0,					// log history
+			 "", "", "","","",0,0},
+		read_trigger_event,		// Readout Routine
 	},
-	{"Periodic", 
-		{2, 0, "SYSTEM", EQ_PERIODIC, 0, "MIDAS", TRUE,
-			RO_RUNNING | RO_TRANSITIONS |RO_ODB, 100, 0, 0, 0, "", "", "","", "", 0,0},
-		read_periodic_event,
+	{"Periodic", 				// Equipment name 
+		{2,						// event ID
+		 0,						// trigger mask
+		"SYSTEM", 				// event buffer
+		EQ_PERIODIC, 			// equipment type
+		0, 						// event source crate
+		"MIDAS", 				// format 
+		TRUE,					// enabled
+		RO_RUNNING | RO_TRANSITIONS |RO_ODB,  // read when running, transitions and update odb
+		100, 					// poll for 100ms
+		0, 						// stop run after this event
+		0, 						// log history
+		0, 
+		"", "", "","", "", 0,0},
+		read_periodic_event, 	// Readout Routine
 	},
 	{""}
 };
@@ -96,6 +121,7 @@ INT frontend_init()
 		return FE_ERR_HW;		
 	}
 
+	// Allocate memory to the socket
 	memset(&servaddr, 0, sizeof(servaddr));
 	servaddr.sin_family = AF_INET;
 	servaddr.sin_port = htons(REDPITAYA_PORT);
@@ -113,8 +139,9 @@ INT frontend_init()
 		return FE_ERR_HW;
 	}
 
-	//printf("Red Pitaya streaming connected successfully!\n");
+	printf("Red Pitaya streaming connected successfully!\n");
 
+	// Initialize Ring Buffer
 	INT status = rb_create(event_buffer_size, max_event_size, &rbh);
 
     if (status != DB_SUCCESS) {
@@ -142,6 +169,7 @@ INT frontend_exit()
 		close(stream_sockfd);
 	}
 
+	// Delete ring buffer 
 	rb_delete(rbh);
 
 	return SUCCESS;
@@ -201,6 +229,7 @@ INT data_acquisition_thread(void* param)
 		bytes_read = recv(stream_sockfd, buffer, sizeof(buffer), 0);
 		//printf("Data received: %ld bytes\n", bytes_read);
 
+		// Check if data is available
 		if (bytes_read <= 0)
 		{
 			if (bytes_read == 0)
