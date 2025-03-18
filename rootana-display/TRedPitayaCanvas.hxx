@@ -61,7 +61,7 @@ public :
 	}
 
 private: 
-	TGraph *derivativeHist;
+	TGraph *derivativeHist; // pointer to TGraph
 	TGNumberEntry *fChannelSelector;
 	int eventIndex = 0; // Tracks total events
 	int xOrigin = 0; // Tracks X-axis origin

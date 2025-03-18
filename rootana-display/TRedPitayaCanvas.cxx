@@ -2,6 +2,7 @@
 #include "TGLabel.h"
 #include "TAxis.h"
 
+// Create the canvas
 TRedPitayaCanvas::TRedPitayaCanvas() : TCanvasHandleBase("Red Pitaya Data")
 {
 	//derivativeHist = new TH1F("DerivateHist", "Data for Channel 0", 1000, 0 ,25);
@@ -11,6 +12,7 @@ TRedPitayaCanvas::TRedPitayaCanvas() : TCanvasHandleBase("Red Pitaya Data")
 	derivativeHist->SetMarkerColor(kBlue);
 }
 
+// Set up display
 void TRedPitayaCanvas::SetUpCompositeFrame(TGCompositeFrame *compFrame, TRootanaDisplay *display)
 {
 	TGHorizontalFrame *frame = new TGHorizontalFrame(compFrame, 200, 40);
@@ -28,7 +30,7 @@ void TRedPitayaCanvas::SetUpCompositeFrame(TGCompositeFrame *compFrame, TRootana
 	compFrame->AddFrame(frame, new TGLayoutHints(kLHintsCenterX,2,2,2,2));
 }
 
-
+// Update the TGraph values and origin index at regular intervals
 void TRedPitayaCanvas::UpdateCanvasHistograms(TDataContainer& dataContainer)
 {
 	//std::cout << "Available Banks: " << dataContainer.GetMidasEvent().GetBankList() << std::endl;
@@ -45,16 +47,16 @@ void TRedPitayaCanvas::UpdateCanvasHistograms(TDataContainer& dataContainer)
 	//	eventIndex ++;
 	//}
 
-	
+	// Check if the bank called DATA contains any data
 	MyData* data = dataContainer.GetEventData<MyData>("DATA");
+	// In case no data is available
 	if (!data) 
 	{
   	  	std::cerr << "Error: Failed to retrieve DATA bank!" << std::endl;
     	return ;
 	}
 
-	//std::cout << "Number of samples: " << data->GetNumSamples() << std::endl;
-
+	// Process available data
 	if (data) 
 	{
 		int numSamples = data->GetNumSamples();
@@ -76,6 +78,7 @@ void TRedPitayaCanvas::UpdateCanvasHistograms(TDataContainer& dataContainer)
 	}
 }
 
+// Plot the TGraph and set Graph dimensions
 void TRedPitayaCanvas::PlotCanvas(TDataContainer& dataContainer, TRootEmbeddedCanvas *embedCanvas)
 {
 	TCanvas *canvas = embedCanvas->GetCanvas();
@@ -88,9 +91,10 @@ void TRedPitayaCanvas::PlotCanvas(TDataContainer& dataContainer, TRootEmbeddedCa
 	canvas->Update();
 }
 
+// Reset histogram and update origin index
 void TRedPitayaCanvas::ResetCanvasHistograms()
 {
-	derivativeHist->Set(0); // Clear all data points in the graph
-	eventIndex = 0;
+	derivativeHist->Set(0); 
+	eventIndex = 0; 
 	xOrigin = 0;
 }
