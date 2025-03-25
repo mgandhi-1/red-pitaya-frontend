@@ -410,7 +410,7 @@ INT read_trigger_event(char *pevent, INT off)
 
 	for (a=0; a < 100; a++)
 	{
-		if (padc[a] > 2500000 || padc[a] < -2500000)
+		if (padc[a] > 20000000 || padc[a] < -20000000)
 		{
 			*pdata++ = padc[a];
 		}
