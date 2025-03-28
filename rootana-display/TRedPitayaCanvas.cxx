@@ -62,7 +62,7 @@ void TRedPitayaCanvas::UpdateCanvasHistograms(TDataContainer& dataContainer)
 		int numSamples = data->GetNumSamples();
 		for (int i = 0; i < numSamples; i++)
 		{
-			int sample = data->GetSample(i)/2000000;
+			int sample = data->GetSample(i)/20000;
 			//printf("sample: %d\n", sample);
 			int xIndex = eventIndex - xOrigin;
 			derivativeHist-> SetPoint(xIndex, xIndex, sample);
@@ -84,7 +84,7 @@ void TRedPitayaCanvas::PlotCanvas(TDataContainer& dataContainer, TRootEmbeddedCa
 	TCanvas *canvas = embedCanvas->GetCanvas();
 	canvas->Clear();
 	//int selectedChannel = fChannelSelector->GetNumberEntry()->GetIntNumber();
-	derivativeHist->GetYaxis()->SetRangeUser(-1000, 1000); 
+	derivativeHist->GetYaxis()->SetRangeUser(-5000, 5000); 
 	derivativeHist-> Draw("AL");
 
 	canvas->Modified();
