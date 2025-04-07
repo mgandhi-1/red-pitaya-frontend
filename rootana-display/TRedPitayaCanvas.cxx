@@ -48,11 +48,11 @@ void TRedPitayaCanvas::UpdateCanvasHistograms(TDataContainer& dataContainer)
 	//}
 
 	// Check if the bank called DATA contains any data
-	MyData* data = dataContainer.GetEventData<MyData>("DATA");
+	MyData* data = dataContainer.GetEventData<MyData>("TADC");
 	// In case no data is available
 	if (!data) 
 	{
-  	  	std::cerr << "Error: Failed to retrieve DATA bank!" << std::endl;
+  	  	std::cerr << "Error: Failed to retrieve TADC bank!" << std::endl;
     	return ;
 	}
 
